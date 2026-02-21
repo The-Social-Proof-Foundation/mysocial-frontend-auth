@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ArrowLeft, Wallet, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,7 +9,6 @@ import { importWalletFromMnemonic, importWalletFromPrivateKey } from '@/lib/wall
 import { completeWalletFlow } from '@/lib/wallet-complete';
 
 export default function ImportWalletPage() {
-  const router = useRouter();
   const [input, setInput] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
