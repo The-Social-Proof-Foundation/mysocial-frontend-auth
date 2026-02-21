@@ -1,6 +1,6 @@
 # auth.mysocial.network
 
-MySocial Auth login server. Handles OAuth with Google, Apple, Facebook, and Twitch. Consuming apps (e.g. mysocial.network, mobile apps) open this app with a `provider` query parameter; there is no provider selection UI.
+MySocial Auth login server. Handles OAuth with Google, Apple, Facebook, and Twitch. When accessed directly (with env config), shows a login/wallet UI. Consuming apps can also open this app with a `provider` query parameter for immediate redirect to the chosen provider.
 
 ## Setup
 
@@ -32,8 +32,13 @@ cp .env.example .env.local
 | `NEXT_PUBLIC_FACEBOOK_APP_ID` | Yes* | Facebook app ID |
 | `NEXT_PUBLIC_TWITCH_CLIENT_ID` | Yes* | Twitch client ID |
 | `NEXT_PUBLIC_AUTH_CALLBACK_URL` | No | Override callback URL (default: `https://auth.mysocial.network/callback`) |
+| `NEXT_PUBLIC_DEV_CLIENT_ID` | No* | Platform client ID for direct access; must match backend allowlist |
+| `NEXT_PUBLIC_DEV_CODE_CHALLENGE` | No* | PKCE S256 code challenge for direct access |
+| `NEXT_PUBLIC_DEV_REDIRECT_URI` | No | Override redirect URI for direct access (default: `{origin}/callback`) |
+| `NEXT_PUBLIC_APP_REDIRECT_URI` | No* | Where to redirect after Create/Import wallet (e.g. main app URL) |
 
 \* At least one provider must be configured. Configure only the providers you use.
+\** For direct access (login/wallet UI on homepage): set `NEXT_PUBLIC_DEV_CLIENT_ID` and `NEXT_PUBLIC_DEV_CODE_CHALLENGE`. For wallet flows: set `NEXT_PUBLIC_APP_REDIRECT_URI`.
 
 ### Provider Setup
 
@@ -49,6 +54,17 @@ pnpm dev
 ```
 
 For local testing, set `NEXT_PUBLIC_AUTH_CALLBACK_URL=http://localhost:3000/callback` and register that URL with each provider (if they allow localhost).
+
+### Direct Access / Local Development
+
+When users land on the auth frontend without URL params (e.g. typing the URL directly), the login/wallet UI appears only if `NEXT_PUBLIC_DEV_CLIENT_ID` and `NEXT_PUBLIC_DEV_CODE_CHALLENGE` are set.
+
+**PKCE code challenge**: Generate with:
+```bash
+echo -n "your-43-char-minimum-verifier-string!!" | openssl dgst -binary -sha256 | base64 | tr '+/' '-_' | tr -d '='
+```
+
+The `client_id` must match your backend allowlist (e.g. `ALLOWED_CLIENTS`).
 
 ## URL Contract
 
@@ -135,6 +151,9 @@ Configure your domain (e.g. `auth.mysocial.network`) in Railway's project settin
 
 | Route | Purpose |
 |-------|---------|
+| `/` | Homepage; shows login/wallet UI when direct access env vars are set |
 | `/login` | Entry point; validates params, stores state, redirects to provider OAuth |
 | `/callback` | Receives provider callback; exchanges code; postMessage or redirect |
+| `/create-wallet` | Create new wallet; generate mnemonic, store, redirect to app |
+| `/import-wallet` | Import wallet from mnemonic or private key; store, redirect to app |
 | `/error` | Invalid params or failed auth |

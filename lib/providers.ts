@@ -5,9 +5,9 @@ function getAuthCallbackUrl(): string {
     return process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL;
   }
   if (process.env.NODE_ENV === 'development') {
-    return 'http://localhost:3000/callback';
+    return 'http://localhost:3000/wallet';
   }
-  return 'https://auth.mysocial.network/callback';
+  return 'https://auth.mysocial.network/wallet';
 }
 
 const AUTH_CALLBACK_URL = getAuthCallbackUrl();
@@ -117,4 +117,10 @@ export function buildProviderAuthUrl(
   const params = config.getAuthParams({ state, codeChallenge });
   const search = new URLSearchParams(params);
   return `${config.authUrl}?${search.toString()}`;
+}
+
+const ALL_PROVIDERS: AuthProvider[] = ['google', 'apple', 'facebook', 'twitch'];
+
+export function getConfiguredProviders(): AuthProvider[] {
+  return ALL_PROVIDERS.filter((p) => getProviderConfig(p) !== null);
 }

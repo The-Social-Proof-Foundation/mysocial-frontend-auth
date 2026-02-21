@@ -20,17 +20,19 @@ export type LoginParams = z.infer<typeof loginParamsSchema>;
 export type AuthProvider = z.infer<typeof providerSchema>;
 export type AuthMode = z.infer<typeof modeSchema>;
 
-export function parseLoginParams(searchParams: URLSearchParams): {
+export function parseLoginParams(
+  searchParams: URLSearchParams | Record<string, string>
+): {
   success: true;
   params: LoginParams;
 } | {
   success: false;
   error: string;
 } {
-  const raw: Record<string, string> = {};
-  searchParams.forEach((value, key) => {
-    raw[key] = value;
-  });
+  const raw: Record<string, string> =
+    searchParams instanceof URLSearchParams
+      ? Object.fromEntries(searchParams.entries())
+      : searchParams;
 
   const result = loginParamsSchema.safeParse(raw);
   if (result.success) {

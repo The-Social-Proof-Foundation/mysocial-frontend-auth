@@ -21,6 +21,8 @@ function ErrorContent() {
   };
 
   const displayMessage = messages[reason] ?? messages.unknown;
+  const isInvalidParams = reason === 'invalid_params';
+  const isDev = process.env.NODE_ENV === 'development';
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-background text-foreground p-4">
@@ -28,6 +30,16 @@ function ErrorContent() {
       <p className="text-center text-muted-foreground max-w-md">
         {displayMessage}
       </p>
+      {isInvalidParams && (
+        <p className="text-center text-sm text-muted-foreground max-w-md">
+          The login URL must include all required OAuth parameters (client_id, redirect_uri, state, nonce, return_origin, mode, provider, code_challenge, code_challenge_method). See README for the URL contract.
+        </p>
+      )}
+      {isInvalidParams && isDev && (
+        <p className="text-center text-xs text-muted-foreground max-w-md">
+          For local testing without a client app, set NEXT_PUBLIC_DEV_CLIENT_ID and NEXT_PUBLIC_DEV_CODE_CHALLENGE in .env.
+        </p>
+      )}
       <Button variant="outline" asChild>
         <Link href="/">Return home</Link>
       </Button>

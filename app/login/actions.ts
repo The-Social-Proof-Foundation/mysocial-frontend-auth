@@ -5,8 +5,8 @@ import { parseLoginParams } from '@/lib/params';
 import { setAuthState } from '@/lib/state';
 import { buildProviderAuthUrl } from '@/lib/providers';
 
-export async function initLogin(searchParams: URLSearchParams) {
-  const parsed = parseLoginParams(searchParams);
+export async function initLogin(params: Record<string, string>) {
+  const parsed = parseLoginParams(params);
   if (!parsed.success) {
     redirect(
       `/error?reason=invalid_params&message=${encodeURIComponent(parsed.error)}`

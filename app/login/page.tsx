@@ -14,7 +14,8 @@ function LoginContent() {
 
     const run = async () => {
       try {
-        const result = await initLogin(searchParams);
+        const params = Object.fromEntries(searchParams.entries());
+        const result = await initLogin(params);
         if (cancelled) return;
         if (result?.providerUrl) {
           window.location.href = result.providerUrl;
