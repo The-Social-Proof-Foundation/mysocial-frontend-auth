@@ -1,36 +1,140 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# auth.mysocial.network
 
-## Getting Started
+MySocial Auth login server. Handles OAuth with Google, Apple, Facebook, and Twitch. Consuming apps (e.g. mysocial.network, mobile apps) open this app with a `provider` query parameter; there is no provider selection UI.
 
-First, run the development server:
+## Setup
+
+### Prerequisites
+
+- Node.js 20.x
+- pnpm
+
+### Install
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Copy `.env.example` to `.env.local` and fill in the values:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cp .env.example .env.local
+```
 
-## Learn More
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AUTH_STATE_SECRET` | Yes | 32+ character secret for cookie encryption. Generate with `openssl rand -base64 32` |
+| `NEXT_PUBLIC_API_BASE_URL` | Yes | Backend API URL (e.g. `https://api.mysocial.network`) |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Yes* | Google OAuth client ID |
+| `NEXT_PUBLIC_APPLE_CLIENT_ID` | Yes* | Apple Sign In client ID |
+| `NEXT_PUBLIC_FACEBOOK_APP_ID` | Yes* | Facebook app ID |
+| `NEXT_PUBLIC_TWITCH_CLIENT_ID` | Yes* | Twitch client ID |
+| `NEXT_PUBLIC_AUTH_CALLBACK_URL` | No | Override callback URL (default: `https://auth.mysocial.network/callback`) |
 
-To learn more about Next.js, take a look at the following resources:
+\* At least one provider must be configured. Configure only the providers you use.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Provider Setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Each provider requires:
 
-## Deploy on Vercel
+1. **Redirect URI**: Register `https://auth.mysocial.network/callback` (or your `NEXT_PUBLIC_AUTH_CALLBACK_URL`) in the provider's developer console.
+2. **Client ID**: Add the client ID to your `.env.local`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Run Locally
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm dev
+```
+
+For local testing, set `NEXT_PUBLIC_AUTH_CALLBACK_URL=http://localhost:3000/callback` and register that URL with each provider (if they allow localhost).
+
+## URL Contract
+
+Entry point:
+
+```
+https://auth.mysocial.network/login?<params>
+```
+
+**Required query parameters:**
+
+| Param | Description |
+|-------|-------------|
+| `client_id` | Platform ID (allowlisted on backend) |
+| `redirect_uri` | Callback URL (e.g. `https://mysocial.network/auth/callback`) |
+| `state` | CSRF token |
+| `nonce` | Replay protection |
+| `return_origin` | Origin of opener (for postMessage validation) |
+| `mode` | `popup` or `redirect` |
+| `provider` | `google` \| `apple` \| `facebook` \| `twitch` |
+| `code_challenge` | PKCE code challenge (S256) |
+| `code_challenge_method` | `S256` |
+| `request_id` | (Optional) From `/auth/request` |
+
+## Flow
+
+1. Consuming app opens `auth.mysocial.network/login?provider=google&...` (popup or redirect).
+2. auth.mysocial.network reads `provider` and immediately redirects to that provider's OAuth flow.
+3. Provider redirects back to `/callback`.
+4. auth.mysocial.network exchanges the provider code for a MySocial auth code (via backend `POST /auth/provider/callback`).
+5. On success:
+   - **popup**: `postMessage` to opener with `{ type: 'MYSOCIAL_AUTH_RESULT', code, state, nonce, clientId, requestId? }`.
+   - **redirect**: redirect to `redirect_uri` with `?code=...&state=...&nonce=...`.
+6. On error:
+   - **popup**: `postMessage` with `{ type: 'MYSOCIAL_AUTH_ERROR', error, state, nonce?, clientId?, requestId? }`.
+   - **redirect**: redirect to `redirect_uri` with `?error=...&state=...`.
+
+## Backend API
+
+The backend must provide:
+
+```
+POST /auth/provider/callback
+Body: {
+  provider: 'google' | 'apple' | 'facebook' | 'twitch',
+  code: string,
+  code_challenge: string,
+  redirect_uri: string,
+  client_id: string,
+  state: string,
+  nonce: string,
+  request_id?: string
+}
+Response: { code: string }
+```
+
+The backend validates `client_id`, `redirect_uri`, exchanges the provider code for tokens, creates a MySocial session, and returns an auth code bound to `code_challenge`.
+
+## Deployment (Railway)
+
+1. Create a new project on [Railway](https://railway.app).
+2. Connect your Git repository.
+3. Add environment variables (see above).
+4. Set the root directory to this project.
+5. `railway.json` defines build and deploy config (config-as-code). Railway will use it automatically.
+
+### Build Command
+
+```bash
+pnpm run build
+```
+
+### Start Command
+
+```bash
+pnpm start
+```
+
+### Custom Domain
+
+Configure your domain (e.g. `auth.mysocial.network`) in Railway's project settings. Ensure the callback URL matches what's registered with each OAuth provider.
+
+## Routes
+
+| Route | Purpose |
+|-------|---------|
+| `/login` | Entry point; validates params, stores state, redirects to provider OAuth |
+| `/callback` | Receives provider callback; exchanges code; postMessage or redirect |
+| `/error` | Invalid params or failed auth |
