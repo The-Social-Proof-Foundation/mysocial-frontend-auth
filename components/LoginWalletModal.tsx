@@ -95,7 +95,7 @@ export function LoginWalletModal() {
         })}
       </div>
 
-      <div className="relative flex items-center w-full max-w-[320px] py-3">
+      <div className="relative flex items-center w-full max-w-[320px] py-8">
         <div className="flex-grow border-t border-white/20" />
         <span className="px-3 text-xs text-muted-foreground">Or continue with</span>
         <div className="flex-grow border-t border-white/20" />
