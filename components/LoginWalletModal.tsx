@@ -39,9 +39,9 @@ export function LoginWalletModal() {
 
   if (!directLoginEnabled) {
     return (
-      <div className="flex flex-col items-center gap-4 pointer-events-auto">
+      <div className="flex flex-col items-center gap-0 pointer-events-auto">
         <Image src="/logo.svg" alt="MySocial" width={74} height={74} priority />
-        <h1 className="text-muted-foreground text-base">Sign into the</h1>
+        <h1 className="text-muted-foreground text-base pt-4">Sign into the</h1>
         <p className="font-chakra-petch text-3xl font-medium text-foreground text-center max-w-md">
           MySocial Testnet
         </p>
@@ -53,10 +53,10 @@ export function LoginWalletModal() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-4 pointer-events-auto">
+    <div className="flex flex-col items-center gap-0 pointer-events-auto">
       <Image src="/logo.svg" alt="MySocial" width={64} height={64} priority />
       <div className="flex flex-col items-center gap-1">
-        <h1 className="text-muted-foreground text-base">Sign into the</h1>
+        <h1 className="text-muted-foreground text-base pt-4">Sign into the</h1>
         <p className="font-chakra-petch text-3xl font-medium text-foreground text-center max-w-md">
           MySocial Testnet
         </p>
