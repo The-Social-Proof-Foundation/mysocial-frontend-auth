@@ -1,4 +1,4 @@
-# auth.mysocial.network
+# auth.testnet.mysocial.network
 
 MySocial Auth login server. Handles OAuth with Google, Apple, Facebook, and Twitch. When accessed directly (with env config), shows a login/wallet UI. Consuming apps can open this app with a `provider` query parameter for immediate redirect to the chosen provider, or with `provider=none`/`provider=default` to show the login picker so the user can choose a method.
 
@@ -31,7 +31,7 @@ cp .env.example .env.local
 | `NEXT_PUBLIC_APPLE_CLIENT_ID` | Yes* | Apple Sign In client ID |
 | `NEXT_PUBLIC_FACEBOOK_APP_ID` | Yes* | Facebook app ID |
 | `NEXT_PUBLIC_TWITCH_CLIENT_ID` | Yes* | Twitch client ID |
-| `NEXT_PUBLIC_AUTH_CALLBACK_URL` | No | Override callback URL (default: `https://auth.mysocial.network/callback`) |
+| `NEXT_PUBLIC_AUTH_CALLBACK_URL` | No | Override callback URL (default: `https://auth.testnet.mysocial.network/callback`) |
 | `NEXT_PUBLIC_DEV_CLIENT_ID` | No* | Platform client ID for direct access; must match backend allowlist |
 | `NEXT_PUBLIC_DEV_CODE_CHALLENGE` | No* | PKCE S256 code challenge for direct access |
 | `NEXT_PUBLIC_DEV_REDIRECT_URI` | No | Override redirect URI for direct access (default: `{origin}/callback`) |
@@ -44,7 +44,7 @@ cp .env.example .env.local
 
 Each provider requires:
 
-1. **Redirect URI**: Register `https://auth.mysocial.network/callback` (or your `NEXT_PUBLIC_AUTH_CALLBACK_URL`) in the provider's developer console.
+1. **Redirect URI**: Register `https://auth.testnet.mysocial.network/callback` (or your `NEXT_PUBLIC_AUTH_CALLBACK_URL`) in the provider's developer console.
 2. **Client ID**: Add the client ID to your `.env.local`.
 
 ### Run Locally
@@ -71,7 +71,7 @@ The `client_id` must match your backend allowlist (e.g. `ALLOWED_CLIENTS`).
 Entry point:
 
 ```
-https://auth.mysocial.network/login?<params>
+https://auth.testnet.mysocial.network/login?<params>
 ```
 
 **Required query parameters:**
@@ -93,10 +93,10 @@ When `provider` is `none` or `default`, the user is redirected to the home page 
 
 ## Flow
 
-1. Consuming app opens `auth.mysocial.network/login?provider=google&...` (popup or redirect). Use `provider=none` or `provider=default` to show the login picker instead of redirecting immediately.
-2. auth.mysocial.network reads `provider`. If `none` or `default`, redirects to the home page (login picker). Otherwise, immediately redirects to that provider's OAuth flow.
+1. Consuming app opens `auth.testnet.mysocial.network/login?provider=google&...` (popup or redirect). Use `provider=none` or `provider=default` to show the login picker instead of redirecting immediately.
+2. auth.testnet.mysocial.network reads `provider`. If `none` or `default`, redirects to the home page (login picker). Otherwise, immediately redirects to that provider's OAuth flow.
 3. Provider redirects back to `/callback`.
-4. auth.mysocial.network exchanges the provider code for a MySocial auth code (via backend `POST /auth/provider/callback`).
+4. auth.testnet.mysocial.network exchanges the provider code for a MySocial auth code (via backend `POST /auth/provider/callback`).
 5. On success:
    - **popup**: `postMessage` to opener with `{ type: 'MYSOCIAL_AUTH_RESULT', code, state, nonce, clientId, requestId? }`.
    - **redirect**: redirect to `redirect_uri` with `?code=...&state=...&nonce=...`.
@@ -147,7 +147,7 @@ pnpm start
 
 ### Custom Domain
 
-Configure your domain (e.g. `auth.mysocial.network`) in Railway's project settings. Ensure the callback URL matches what's registered with each OAuth provider.
+Configure your domain (e.g. `auth.testnet.mysocial.network`) in Railway's project settings. Ensure the callback URL matches what's registered with each OAuth provider.
 
 ## Routes
 

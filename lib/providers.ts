@@ -5,9 +5,9 @@ function getAuthCallbackUrl(): string {
     return process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL;
   }
   if (process.env.NODE_ENV === 'development') {
-    return 'http://localhost:3000/wallet';
+    return 'http://localhost:3000/callback';
   }
-  return 'https://auth.mysocial.network/wallet';
+  return 'https://auth.testnet.mysocial.network/callback';
 }
 
 const AUTH_CALLBACK_URL = getAuthCallbackUrl();
