@@ -14,6 +14,12 @@ export async function initLogin(params: Record<string, string>) {
   }
 
   const { params: loginParams } = parsed;
+
+  if (loginParams.provider === 'none') {
+    await setAuthState(loginParams);
+    redirect('/');
+  }
+
   const providerUrl = buildProviderAuthUrl(
     loginParams.provider,
     loginParams.state,

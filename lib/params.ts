@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-const providerSchema = z.enum(['google', 'apple', 'facebook', 'twitch']);
+export const oauthProviderSchema = z.enum(['google', 'apple', 'facebook', 'twitch']);
+const providerParamSchema = z
+  .enum(['google', 'apple', 'facebook', 'twitch', 'none', 'default'])
+  .transform((v) => (v === 'default' ? 'none' : v));
 const modeSchema = z.enum(['popup', 'redirect']);
 
 export const loginParamsSchema = z.object({
@@ -10,14 +13,15 @@ export const loginParamsSchema = z.object({
   nonce: z.string().min(1, 'nonce is required'),
   return_origin: z.string().min(1, 'return_origin is required'),
   mode: modeSchema,
-  provider: providerSchema,
+  provider: providerParamSchema,
   code_challenge: z.string().min(1, 'code_challenge is required'),
   code_challenge_method: z.literal('S256'),
   request_id: z.string().optional(),
 });
 
 export type LoginParams = z.infer<typeof loginParamsSchema>;
-export type AuthProvider = z.infer<typeof providerSchema>;
+export type AuthProvider = z.infer<typeof oauthProviderSchema>;
+export type ProviderParam = z.infer<typeof providerParamSchema>;
 export type AuthMode = z.infer<typeof modeSchema>;
 
 export function parseLoginParams(

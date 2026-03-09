@@ -1,6 +1,6 @@
 # auth.mysocial.network
 
-MySocial Auth login server. Handles OAuth with Google, Apple, Facebook, and Twitch. When accessed directly (with env config), shows a login/wallet UI. Consuming apps can also open this app with a `provider` query parameter for immediate redirect to the chosen provider.
+MySocial Auth login server. Handles OAuth with Google, Apple, Facebook, and Twitch. When accessed directly (with env config), shows a login/wallet UI. Consuming apps can open this app with a `provider` query parameter for immediate redirect to the chosen provider, or with `provider=none`/`provider=default` to show the login picker so the user can choose a method.
 
 ## Setup
 
@@ -84,15 +84,17 @@ https://auth.mysocial.network/login?<params>
 | `nonce` | Replay protection |
 | `return_origin` | Origin of opener (for postMessage validation) |
 | `mode` | `popup` or `redirect` |
-| `provider` | `google` \| `apple` \| `facebook` \| `twitch` |
+| `provider` | `google` \| `apple` \| `facebook` \| `twitch` \| `none` \| `default` |
 | `code_challenge` | PKCE code challenge (S256) |
 | `code_challenge_method` | `S256` |
 | `request_id` | (Optional) From `/auth/request` |
 
+When `provider` is `none` or `default`, the user is redirected to the home page to choose a login method (social or wallet). All other params must still be provided; they are stored and used when the user picks a provider.
+
 ## Flow
 
-1. Consuming app opens `auth.mysocial.network/login?provider=google&...` (popup or redirect).
-2. auth.mysocial.network reads `provider` and immediately redirects to that provider's OAuth flow.
+1. Consuming app opens `auth.mysocial.network/login?provider=google&...` (popup or redirect). Use `provider=none` or `provider=default` to show the login picker instead of redirecting immediately.
+2. auth.mysocial.network reads `provider`. If `none` or `default`, redirects to the home page (login picker). Otherwise, immediately redirects to that provider's OAuth flow.
 3. Provider redirects back to `/callback`.
 4. auth.mysocial.network exchanges the provider code for a MySocial auth code (via backend `POST /auth/provider/callback`).
 5. On success:
@@ -151,7 +153,7 @@ Configure your domain (e.g. `auth.mysocial.network`) in Railway's project settin
 
 | Route | Purpose |
 |-------|---------|
-| `/` | Homepage; shows login/wallet UI when direct access env vars are set |
+| `/` | Homepage; shows login/wallet UI when direct access env vars are set or when arriving via `provider=none` |
 | `/login` | Entry point; validates params, stores state, redirects to provider OAuth |
 | `/callback` | Receives provider callback; exchanges code; postMessage or redirect |
 | `/create-wallet` | Create new wallet; generate mnemonic, store, redirect to app |

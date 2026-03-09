@@ -1,13 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Wallet, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { buildLoginUrl, isDirectLoginEnabled } from '@/lib/build-login-url';
+import {
+  buildLoginUrl,
+  buildLoginUrlFromParams,
+  isDirectLoginEnabled,
+} from '@/lib/build-login-url';
 import { getConfiguredProviders } from '@/lib/providers';
-import type { AuthProvider } from '@/lib/params';
+import { getPendingAuthParams } from '@/lib/auth-actions';
+import type { AuthProvider, LoginParams } from '@/lib/params';
 
 const PROVIDER_LABELS: Record<AuthProvider, string> = {
   google: 'Google',
@@ -25,19 +30,40 @@ const PROVIDER_LOGOS: Record<AuthProvider, string> = {
 
 export function LoginWalletModal() {
   const [navigating, setNavigating] = useState<AuthProvider | null>(null);
+  const [pendingParams, setPendingParams] = useState<LoginParams | null>(null);
+  const [pendingParamsLoaded, setPendingParamsLoaded] = useState(false);
 
   const directLoginEnabled = isDirectLoginEnabled();
   const configuredProviders = getConfiguredProviders();
+  const pickerEnabled = directLoginEnabled || !!pendingParams;
+
+  useEffect(() => {
+    getPendingAuthParams().then((params) => {
+      setPendingParams(params);
+      setPendingParamsLoaded(true);
+    });
+  }, []);
 
   const handleSocialLogin = (provider: AuthProvider) => {
-    const url = buildLoginUrl(provider);
+    const url = pendingParams
+      ? buildLoginUrlFromParams(pendingParams, provider)
+      : buildLoginUrl(provider);
     if (url) {
       setNavigating(provider);
       window.location.href = url;
     }
   };
 
-  if (!directLoginEnabled) {
+  if (!pendingParamsLoaded) {
+    return (
+      <div className="flex flex-col items-center gap-0 pointer-events-auto">
+        <Image src="/logo.svg" alt="MySocial" width={74} height={74} priority />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent mt-4" />
+      </div>
+    );
+  }
+
+  if (!pickerEnabled) {
     return (
       <div className="flex flex-col items-center gap-0 pointer-events-auto">
         <Image src="/logo.svg" alt="MySocial" width={74} height={74} priority />
@@ -64,7 +90,9 @@ export function LoginWalletModal() {
 
       <div className="w-full max-w-[320px] space-y-2 pt-8">
         {configuredProviders.map((provider) => {
-          const url = buildLoginUrl(provider);
+          const url = pendingParams
+            ? buildLoginUrlFromParams(pendingParams, provider)
+            : buildLoginUrl(provider);
           if (!url) return null;
 
           const label = `Login with ${PROVIDER_LABELS[provider]}`;

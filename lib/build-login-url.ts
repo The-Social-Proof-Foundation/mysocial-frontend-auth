@@ -1,4 +1,4 @@
-import type { AuthProvider } from './params';
+import type { AuthProvider, LoginParams } from './params';
 
 function getOrigin(): string {
   if (typeof window !== 'undefined') return window.location.origin;
@@ -55,4 +55,32 @@ export function buildLoginUrl(provider: AuthProvider): string | null {
   });
 
   return `${origin}/login?${params.toString()}`;
+}
+
+export function buildLoginUrlFromParams(
+  params: LoginParams,
+  chosenProvider: AuthProvider
+): string {
+  const origin =
+    typeof window !== 'undefined'
+      ? window.location.origin
+      : process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL?.replace(/\/callback.*$/, '') ??
+        'http://localhost:3000';
+
+  const searchParams = new URLSearchParams({
+    client_id: params.client_id,
+    redirect_uri: params.redirect_uri,
+    state: params.state,
+    nonce: params.nonce,
+    return_origin: params.return_origin,
+    mode: params.mode,
+    provider: chosenProvider,
+    code_challenge: params.code_challenge,
+    code_challenge_method: params.code_challenge_method,
+  });
+  if (params.request_id) {
+    searchParams.set('request_id', params.request_id);
+  }
+
+  return `${origin}/login?${searchParams.toString()}`;
 }

@@ -54,6 +54,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (authState.provider === 'none') {
+      await clearAuthState();
+      return NextResponse.json(
+        { error: 'invalid_state', message: 'Provider not selected' },
+        { status: 400 }
+      );
+    }
+
     const result = await exchangeProviderCode({
       provider: authState.provider,
       code,
