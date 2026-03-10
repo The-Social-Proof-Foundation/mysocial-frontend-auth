@@ -1,6 +1,6 @@
 import type { AuthProvider } from './params';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://api.mysocial.network';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://salt.testnet.mysocial.network';
 const AUTH_CALLBACK_PATH =
   process.env.NEXT_PUBLIC_AUTH_CALLBACK_PATH ?? '/auth/provider/callback';
 
@@ -17,6 +17,7 @@ export interface ProviderCallbackRequest {
 
 export interface ProviderCallbackResponse {
   code: string;
+  salt?: string;
 }
 
 export async function exchangeProviderCode(

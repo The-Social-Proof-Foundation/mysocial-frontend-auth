@@ -8,6 +8,7 @@ interface CallbackSuccess {
   success: true;
   mode: 'popup' | 'redirect';
   code: string;
+  salt?: string;
   state: string;
   nonce: string;
   clientId: string;
@@ -129,6 +130,7 @@ function CallbackContent() {
             {
               type: 'MYSOCIAL_AUTH_RESULT',
               code: success.code,
+              ...(success.salt != null && { salt: success.salt }),
               state: success.state,
               nonce: success.nonce,
               clientId: success.clientId,
@@ -140,6 +142,9 @@ function CallbackContent() {
         } else {
           const redirectUrl = new URL(success.redirectUri);
           redirectUrl.searchParams.set('code', success.code);
+          if (success.salt != null) {
+            redirectUrl.searchParams.set('salt', success.salt);
+          }
           redirectUrl.searchParams.set('state', success.state);
           redirectUrl.searchParams.set('nonce', success.nonce);
           window.location.href = redirectUrl.toString();

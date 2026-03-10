@@ -26,7 +26,7 @@ cp .env.example .env.local
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `AUTH_STATE_SECRET` | Yes | 32+ character secret for cookie encryption. Generate with `openssl rand -base64 32` |
-| `NEXT_PUBLIC_API_BASE_URL` | Yes | Backend API URL (e.g. `https://api.mysocial.network`) |
+| `NEXT_PUBLIC_API_BASE_URL` | Yes | Salt service URL (e.g. `https://salt.testnet.mysocial.network`) |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Yes* | Google OAuth client ID |
 | `NEXT_PUBLIC_APPLE_CLIENT_ID` | Yes* | Apple Sign In client ID |
 | `NEXT_PUBLIC_FACEBOOK_APP_ID` | Yes* | Facebook app ID |
@@ -99,8 +99,8 @@ When `provider` is `none` or `default`, the user is redirected to the home page 
 3. Provider redirects back to `/callback`.
 4. auth.testnet.mysocial.network exchanges the provider code for a MySocial auth code (via backend `POST /auth/provider/callback`).
 5. On success:
-   - **popup**: `postMessage` to opener with `{ type: 'MYSOCIAL_AUTH_RESULT', code, state, nonce, clientId, requestId? }`.
-   - **redirect**: redirect to `redirect_uri` with `?code=...&state=...&nonce=...`.
+   - **popup**: `postMessage` to opener with `{ type: 'MYSOCIAL_AUTH_RESULT', code, salt?, state, nonce, clientId, requestId? }`.
+   - **redirect**: redirect to `redirect_uri` with `?code=...&salt=...&state=...&nonce=...` (salt included when backend returns it).
 6. On error:
    - **popup**: `postMessage` with `{ type: 'MYSOCIAL_AUTH_ERROR', error, state, nonce?, clientId?, requestId? }`.
    - **redirect**: redirect to `redirect_uri` with `?error=...&state=...`.
@@ -121,10 +121,60 @@ Body: {
   nonce: string,
   request_id?: string
 }
-Response: { code: string }
+Response: { code: string, salt?: string }
 ```
 
-The backend validates `client_id`, `redirect_uri`, exchanges the provider code for tokens, creates a MySocial session, and returns an auth code bound to `code_challenge`.
+The backend validates `client_id`, `redirect_uri`, exchanges the provider code for tokens, creates a MySocial session, and returns an auth code bound to `code_challenge`. When the backend fetches a salt (e.g. via the salt service), it may include `salt` in the response; the auth frontend passes it through to the consumer for zkLogin wallet derivation.
+
+## Salt Service
+
+**Base URL:** `https://salt.testnet.mysocial.network` (testnet) or `https://salt.mysocial.network` (production)
+
+This auth frontend calls `POST ${NEXT_PUBLIC_API_BASE_URL}/auth/provider/callback` to exchange the OAuth code. The salt service implements that endpoint, exchanges the code for tokens, fetches the salt, and returns `{ code, salt }`.
+
+**Option 1 – Call `POST /salt` when you already have a token:**
+
+Google/Apple (JWT):
+
+```js
+const res = await fetch(`${SALT_SERVICE_URL}/salt`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ jwt: idToken }),
+});
+const { salt } = await res.json(); // BigInt decimal string, ready for zkLogin
+```
+
+Facebook/Twitch (access token):
+
+```js
+const res = await fetch(`${SALT_SERVICE_URL}/salt`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ provider: 'facebook', token: accessToken }),
+});
+const { salt } = await res.json();
+```
+
+**Option 2 – Call `POST /auth/provider/callback` when you have an OAuth code** (used by this auth frontend):
+
+```js
+const res = await fetch(`${SALT_SERVICE_URL}/auth/provider/callback`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    code: authCode,
+    state: stateParam,
+    nonce: nonceParam,
+    code_verifier: codeVerifier, // if using PKCE
+  }),
+});
+const { user, salt, access_token } = await res.json();
+```
+
+**Readiness check:** `GET ${SALT_SERVICE_URL}/salt/check` returns `{ status: "ready" }`.
+
+**CORS:** `ALLOWED_ORIGINS` must include your frontend origin (e.g. `https://auth.testnet.mysocial.network`).
 
 ## Deployment (Railway)
 

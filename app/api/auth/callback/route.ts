@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
       success: true,
       mode: authState.mode,
       code: result.code,
+      ...(result.salt != null && { salt: result.salt }),
       state: authState.state,
       nonce: authState.nonce,
       clientId: authState.client_id,
