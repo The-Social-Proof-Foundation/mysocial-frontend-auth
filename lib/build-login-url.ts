@@ -15,6 +15,7 @@ export interface DirectLoginConfig {
   clientId: string;
   redirectUri: string;
   codeChallenge: string;
+  codeVerifier?: string;
 }
 
 export function getDirectLoginConfig(): DirectLoginConfig | null {
@@ -27,6 +28,7 @@ export function getDirectLoginConfig(): DirectLoginConfig | null {
     clientId,
     redirectUri: getRedirectUri(),
     codeChallenge,
+    codeVerifier: process.env.NEXT_PUBLIC_DEV_CODE_VERIFIER?.trim() || undefined,
   };
 }
 
@@ -53,6 +55,9 @@ export function buildLoginUrl(provider: AuthProvider): string | null {
     code_challenge: config.codeChallenge,
     code_challenge_method: 'S256',
   });
+  if (config.codeVerifier) {
+    params.set('code_verifier', config.codeVerifier);
+  }
 
   return `${origin}/login?${params.toString()}`;
 }
@@ -80,6 +85,9 @@ export function buildLoginUrlFromParams(
   });
   if (params.request_id) {
     searchParams.set('request_id', params.request_id);
+  }
+  if (params.code_verifier) {
+    searchParams.set('code_verifier', params.code_verifier);
   }
 
   return `${origin}/login?${searchParams.toString()}`;

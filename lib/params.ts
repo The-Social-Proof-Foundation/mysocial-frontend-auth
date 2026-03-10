@@ -16,6 +16,7 @@ export const loginParamsSchema = z.object({
   provider: providerParamSchema,
   code_challenge: z.string().min(1, 'code_challenge is required'),
   code_challenge_method: z.literal('S256'),
+  code_verifier: z.string().optional(),
   request_id: z.string().optional(),
 });
 

@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
       client_id: authState.client_id,
       state: authState.state,
       nonce: authState.nonce,
+      code_verifier: authState.code_verifier,
       request_id: authState.request_id,
     });
 

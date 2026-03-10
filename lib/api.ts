@@ -12,6 +12,7 @@ export interface ProviderCallbackRequest {
   client_id: string;
   state: string;
   nonce: string;
+  code_verifier?: string;
   request_id?: string;
 }
 
