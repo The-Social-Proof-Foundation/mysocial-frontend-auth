@@ -141,7 +141,7 @@ function CallbackContent() {
           redirectUrl.searchParams.set('nonce', success.nonce);
           window.location.href = redirectUrl.toString();
         }
-      } catch (e) {
+      } catch {
         if (!cancelled) {
           setErrorMessage('Unable to complete sign in. Please try again.');
           setStatus('error');
