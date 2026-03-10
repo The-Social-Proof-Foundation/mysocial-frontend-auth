@@ -25,6 +25,7 @@ function CallbackContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,11 +111,13 @@ function CallbackContent() {
 
         if (!res.ok) {
           const err = data as CallbackError;
+          const rawMessage = err.message ?? err.error ?? 'Exchange failed';
           const message =
             res.status === 500
               ? 'Unable to complete sign in. Please try again.'
-              : err.message ?? err.error ?? 'Exchange failed';
+              : rawMessage;
           setErrorMessage(message);
+          setErrorDetails(res.status === 500 ? rawMessage : null);
           setStatus('error');
           return;
         }
@@ -159,6 +162,16 @@ function CallbackContent() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background text-foreground p-4">
         <p className="text-destructive text-center">{errorMessage}</p>
+        {errorDetails && (
+          <details className="w-full max-w-md text-left">
+            <summary className="text-sm text-muted-foreground cursor-pointer hover:underline">
+              Technical details
+            </summary>
+            <pre className="mt-2 p-3 text-xs bg-muted rounded overflow-auto break-all">
+              {errorDetails}
+            </pre>
+          </details>
+        )}
         <a
           href="/error?reason=callback_failed"
           className="text-sm text-foreground hover:underline"
