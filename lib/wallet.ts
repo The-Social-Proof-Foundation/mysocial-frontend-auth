@@ -21,12 +21,6 @@ export async function generateNewWallet(): Promise<{ address: string; mnemonic: 
     throw new Error('Wallet generation validation failed: stored mnemonic cannot restore same address');
   }
 
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('mysocial_mnemonic', mnemonic);
-    localStorage.setItem('mysocial_derivation_path', DERIVATION_PATH);
-    localStorage.setItem('mysocial_address', address);
-  }
-
   return { address, mnemonic };
 }
 
@@ -43,12 +37,6 @@ export async function importWalletFromMnemonic(mnemonic: string): Promise<string
   const restoredAddress = restoredKeypair.getPublicKey().toMySoAddress();
   if (address !== restoredAddress) {
     throw new Error('Mnemonic import validation failed: stored mnemonic cannot restore same address');
-  }
-
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('mysocial_mnemonic', mnemonic);
-    localStorage.setItem('mysocial_derivation_path', DERIVATION_PATH);
-    localStorage.setItem('mysocial_address', address);
   }
 
   return address;
@@ -73,12 +61,6 @@ export async function importWalletFromPrivateKey(privateKey: string): Promise<st
 
   const keypair = Ed25519Keypair.fromSecretKey(keyBytes);
   const address = keypair.getPublicKey().toMySoAddress();
-
-  if (typeof localStorage !== 'undefined') {
-    const keyBase64 = btoa(String.fromCharCode(...Array.from(keyBytes)));
-    localStorage.setItem('mysocial_private_key', keyBase64);
-    localStorage.setItem('mysocial_address', address);
-  }
 
   return address;
 }

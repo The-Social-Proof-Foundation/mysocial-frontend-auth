@@ -12,6 +12,7 @@ import {
 } from '@/lib/build-login-url';
 import { getConfiguredProviders } from '@/lib/providers';
 import { getPendingAuthParams } from '@/lib/auth-actions';
+import { isSafeOrigin, STORAGE_KEY } from '@/lib/wallet-complete';
 import type { AuthProvider, LoginParams } from '@/lib/params';
 
 const PROVIDER_LABELS: Record<AuthProvider, string> = {
@@ -41,6 +42,13 @@ export function LoginWalletModal() {
     getPendingAuthParams().then((params) => {
       setPendingParams(params);
       setPendingParamsLoaded(true);
+      if (params?.return_origin && isSafeOrigin(params.return_origin)) {
+        try {
+          sessionStorage.setItem(STORAGE_KEY, params.return_origin);
+        } catch {
+          // ignore storage errors
+        }
+      }
     });
   }, []);
 
@@ -135,7 +143,13 @@ export function LoginWalletModal() {
           className="w-full h-11 bg-black border border-white/20 text-white font-chakra-petch text-sm hover:bg-secondary hover:border-white/30"
           asChild
         >
-          <Link href="/create-wallet">
+          <Link
+            href={
+              pendingParams?.return_origin && isSafeOrigin(pendingParams.return_origin)
+                ? `/create-wallet?return_origin=${encodeURIComponent(pendingParams.return_origin)}`
+                : '/create-wallet'
+            }
+          >
             <Wallet className="mr-2 h-4 w-4" />
             Create Wallet
           </Link>
@@ -145,7 +159,13 @@ export function LoginWalletModal() {
           className="w-full h-11 font-chakra-petch text-sm text-muted-foreground hover:text-foreground hover:bg-secondary border border-white/10"
           asChild
         >
-          <Link href="/import-wallet">
+          <Link
+            href={
+              pendingParams?.return_origin && isSafeOrigin(pendingParams.return_origin)
+                ? `/import-wallet?return_origin=${encodeURIComponent(pendingParams.return_origin)}`
+                : '/import-wallet'
+            }
+          >
             <Download className="mr-2 h-3 w-3" />
             Import Wallet
           </Link>
