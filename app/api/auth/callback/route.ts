@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     const result = await exchangeProviderCode({
       provider: authState.provider,
       code,
-      code_challenge: authState.code_challenge,
+      code_challenge: authState.code_challenge ?? '',
       redirect_uri: authState.redirect_uri,
       client_id: authState.client_id,
       state: authState.state,

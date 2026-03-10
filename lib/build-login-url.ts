@@ -55,9 +55,6 @@ export function buildLoginUrl(provider: AuthProvider): string | null {
     code_challenge: config.codeChallenge,
     code_challenge_method: 'S256',
   });
-  if (config.codeVerifier) {
-    params.set('code_verifier', config.codeVerifier);
-  }
 
   return `${origin}/login?${params.toString()}`;
 }
@@ -80,14 +77,11 @@ export function buildLoginUrlFromParams(
     return_origin: params.return_origin,
     mode: params.mode,
     provider: chosenProvider,
-    code_challenge: params.code_challenge,
+    code_challenge: params.code_challenge ?? '',
     code_challenge_method: params.code_challenge_method,
   });
   if (params.request_id) {
     searchParams.set('request_id', params.request_id);
-  }
-  if (params.code_verifier) {
-    searchParams.set('code_verifier', params.code_verifier);
   }
 
   return `${origin}/login?${searchParams.toString()}`;

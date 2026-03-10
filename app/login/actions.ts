@@ -2,8 +2,39 @@
 
 import { redirect } from 'next/navigation';
 import { parseLoginParams } from '@/lib/params';
-import { setAuthState } from '@/lib/state';
+import { getAuthState, setAuthState } from '@/lib/state';
 import { buildProviderAuthUrl } from '@/lib/providers';
+import { generatePkce } from '@/lib/pkce';
+import type { AuthProvider, LoginParams } from '@/lib/params';
+
+async function ensurePkceForGoogleApple(
+  loginParams: LoginParams
+): Promise<LoginParams> {
+  if (loginParams.code_verifier) {
+    return {
+      ...loginParams,
+      code_challenge: loginParams.code_challenge ?? '',
+    };
+  }
+  const existing = await getAuthState();
+  if (
+    existing?.provider === 'none' &&
+    existing.code_challenge &&
+    existing.code_challenge === loginParams.code_challenge
+  ) {
+    return {
+      ...loginParams,
+      code_challenge: existing.code_challenge,
+      code_verifier: existing.code_verifier,
+    };
+  }
+  const { codeVerifier, codeChallenge } = generatePkce();
+  return {
+    ...loginParams,
+    code_challenge: codeChallenge,
+    code_verifier: codeVerifier,
+  };
+}
 
 export async function initLogin(params: Record<string, string>) {
   const parsed = parseLoginParams(params);
@@ -13,22 +44,33 @@ export async function initLogin(params: Record<string, string>) {
     );
   }
 
-  const { params: loginParams } = parsed;
+  let loginParams = parsed.params;
 
   if (loginParams.provider === 'none') {
+    const { codeVerifier, codeChallenge } = generatePkce();
+    loginParams = {
+      ...loginParams,
+      code_challenge: codeChallenge,
+      code_verifier: codeVerifier,
+    };
     await setAuthState(loginParams);
     redirect('/');
   }
 
+  if (loginParams.provider === 'google' || loginParams.provider === 'apple') {
+    loginParams = await ensurePkceForGoogleApple(loginParams);
+  }
+
+  const provider = loginParams.provider as AuthProvider;
   const providerUrl = buildProviderAuthUrl(
-    loginParams.provider,
+    provider,
     loginParams.state,
-    loginParams.code_challenge
+    loginParams.code_challenge ?? ''
   );
 
   if (!providerUrl) {
     redirect(
-      `/error?reason=provider_not_configured&provider=${loginParams.provider}`
+      `/error?reason=provider_not_configured&provider=${provider}`
     );
   }
 
