@@ -1,6 +1,8 @@
 import type { AuthProvider } from './params';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://api.mysocial.network';
+const AUTH_CALLBACK_PATH =
+  process.env.NEXT_PUBLIC_AUTH_CALLBACK_PATH ?? '/auth/provider/callback';
 
 export interface ProviderCallbackRequest {
   provider: AuthProvider;
@@ -20,7 +22,8 @@ export interface ProviderCallbackResponse {
 export async function exchangeProviderCode(
   body: ProviderCallbackRequest
 ): Promise<ProviderCallbackResponse> {
-  const url = `${API_BASE.replace(/\/$/, '')}/auth/provider/callback`;
+  const path = AUTH_CALLBACK_PATH.startsWith('/') ? AUTH_CALLBACK_PATH : `/${AUTH_CALLBACK_PATH}`;
+  const url = `${API_BASE.replace(/\/$/, '')}${path}`;
   let res: Response;
   try {
     res = await fetch(url, {

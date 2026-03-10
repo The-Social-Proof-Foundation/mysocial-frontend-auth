@@ -32,6 +32,7 @@ cp .env.example .env.local
 | `NEXT_PUBLIC_FACEBOOK_APP_ID` | Yes* | Facebook app ID |
 | `NEXT_PUBLIC_TWITCH_CLIENT_ID` | Yes* | Twitch client ID |
 | `NEXT_PUBLIC_AUTH_CALLBACK_URL` | No | Override callback URL (default: `https://auth.testnet.mysocial.network/callback`) |
+| `NEXT_PUBLIC_AUTH_CALLBACK_PATH` | No | Override backend path (default: `/auth/provider/callback`). Use if backend uses e.g. `/api/auth/provider/callback` |
 | `NEXT_PUBLIC_DEV_CLIENT_ID` | No* | Platform client ID for direct access; must match backend allowlist |
 | `NEXT_PUBLIC_DEV_CODE_CHALLENGE` | No* | PKCE S256 code challenge for direct access |
 | `NEXT_PUBLIC_DEV_REDIRECT_URI` | No | Override redirect URI for direct access (default: `{origin}/callback`) |
