@@ -110,7 +110,11 @@ function CallbackContent() {
 
         if (!res.ok) {
           const err = data as CallbackError;
-          setErrorMessage(err.message ?? err.error ?? 'Exchange failed');
+          const message =
+            res.status === 500
+              ? 'Unable to complete sign in. Please try again.'
+              : err.message ?? err.error ?? 'Exchange failed';
+          setErrorMessage(message);
           setStatus('error');
           return;
         }
@@ -139,7 +143,7 @@ function CallbackContent() {
         }
       } catch (e) {
         if (!cancelled) {
-          setErrorMessage(e instanceof Error ? e.message : 'Failed to complete sign in');
+          setErrorMessage('Unable to complete sign in. Please try again.');
           setStatus('error');
         }
       }

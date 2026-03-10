@@ -21,11 +21,19 @@ export async function exchangeProviderCode(
   body: ProviderCallbackRequest
 ): Promise<ProviderCallbackResponse> {
   const url = `${API_BASE.replace(/\/$/, '')}/auth/provider/callback`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    throw new Error(
+      `Backend unreachable (${url}): ${msg}. Verify NEXT_PUBLIC_API_BASE_URL.`
+    );
+  }
 
   if (!res.ok) {
     const text = await res.text();

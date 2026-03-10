@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
       returnOrigin: authState.return_origin,
     });
   } catch (err) {
+    console.error('[auth/callback] exchangeProviderCode failed:', err);
     const message = err instanceof Error ? err.message : 'Exchange failed';
     return NextResponse.json(
       { error: 'exchange_failed', message },
