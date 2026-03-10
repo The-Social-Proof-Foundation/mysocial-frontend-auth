@@ -19,6 +19,8 @@ export interface ProviderCallbackRequest {
 export interface ProviderCallbackResponse {
   code: string;
   salt?: string;
+  id_token?: string;
+  user?: { address: string; email?: string; [key: string]: unknown };
 }
 
 export async function exchangeProviderCode(

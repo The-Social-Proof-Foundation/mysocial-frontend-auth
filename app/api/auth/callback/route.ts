@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { jwtToAddress, decodeJwt } from '@socialproof/myso/zklogin';
 import { getAuthState, clearAuthState } from '@/lib/state';
 import { exchangeProviderCode } from '@/lib/api';
 
@@ -76,11 +77,27 @@ export async function POST(request: NextRequest) {
 
     await clearAuthState();
 
+    let user: { address: string; email?: string } | undefined;
+    if (result.salt != null && result.id_token != null) {
+      const address = jwtToAddress(result.id_token, result.salt, false);
+      let email: string | undefined;
+      try {
+        const payload = decodeJwt(result.id_token) as { email?: string };
+        email = payload.email;
+      } catch {
+        // JWT decode failed; address still valid
+      }
+      user = { address, ...(email && { email }) };
+    } else if (result.user != null) {
+      user = result.user;
+    }
+
     return NextResponse.json({
       success: true,
       mode: authState.mode,
       code: result.code,
       ...(result.salt != null && { salt: result.salt }),
+      ...(user != null && { user }),
       state: authState.state,
       nonce: authState.nonce,
       clientId: authState.client_id,

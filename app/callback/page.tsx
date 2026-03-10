@@ -9,6 +9,7 @@ interface CallbackSuccess {
   mode: 'popup' | 'redirect';
   code: string;
   salt?: string;
+  user?: { address: string; email?: string; [key: string]: unknown };
   state: string;
   nonce: string;
   clientId: string;
@@ -131,6 +132,7 @@ function CallbackContent() {
               type: 'MYSOCIAL_AUTH_RESULT',
               code: success.code,
               ...(success.salt != null && { salt: success.salt }),
+              ...(success.user != null && { user: success.user }),
               state: success.state,
               nonce: success.nonce,
               clientId: success.clientId,
@@ -144,6 +146,9 @@ function CallbackContent() {
           redirectUrl.searchParams.set('code', success.code);
           if (success.salt != null) {
             redirectUrl.searchParams.set('salt', success.salt);
+          }
+          if (success.user?.address) {
+            redirectUrl.searchParams.set('address', success.user.address);
           }
           redirectUrl.searchParams.set('state', success.state);
           redirectUrl.searchParams.set('nonce', success.nonce);

@@ -99,8 +99,8 @@ When `provider` is `none` or `default`, the user is redirected to the home page 
 3. Provider redirects back to `/callback`.
 4. auth.testnet.mysocial.network exchanges the provider code for a MySocial auth code (via backend `POST /auth/provider/callback`).
 5. On success:
-   - **popup**: `postMessage` to opener with `{ type: 'MYSOCIAL_AUTH_RESULT', code, salt?, state, nonce, clientId, requestId? }`.
-   - **redirect**: redirect to `redirect_uri` with `?code=...&salt=...&state=...&nonce=...` (salt included when backend returns it).
+   - **popup**: `postMessage` to opener with `{ type: 'MYSOCIAL_AUTH_RESULT', code, salt?, user?, state, nonce, clientId, requestId? }`. When the backend returns a derived user, `user` includes `{ address: "0x...", email?: "...", ... }`.
+   - **redirect**: redirect to `redirect_uri` with `?code=...&salt=...&address=...&state=...&nonce=...` (salt and address included when backend returns them).
 6. On error:
    - **popup**: `postMessage` with `{ type: 'MYSOCIAL_AUTH_ERROR', error, state, nonce?, clientId?, requestId? }`.
    - **redirect**: redirect to `redirect_uri` with `?error=...&state=...`.
@@ -121,10 +121,10 @@ Body: {
   nonce: string,
   request_id?: string
 }
-Response: { code: string, salt?: string }
+Response: { code: string, salt?: string, id_token?: string, user?: { address: string, email?: string, ... } }
 ```
 
-The backend validates `client_id`, `redirect_uri`, exchanges the provider code for tokens, creates a MySocial session, and returns an auth code bound to `code_challenge`. When the backend fetches a salt (e.g. via the salt service), it may include `salt` in the response; the auth frontend passes it through to the consumer for zkLogin wallet derivation.
+The backend validates `client_id`, `redirect_uri`, exchanges the provider code for tokens, creates a MySocial session, and returns an auth code bound to `code_challenge`. When the backend fetches a salt (e.g. via the salt service), it may include `salt` in the response; the auth frontend passes it through to the consumer for zkLogin wallet derivation. When the backend derives the MySo address from salt + JWT, it may include `user: { address, email?, ... }`; the auth frontend forwards it in `MYSOCIAL_AUTH_RESULT` and the redirect URL.
 
 ## Salt Service
 
