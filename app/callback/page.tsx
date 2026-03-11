@@ -9,7 +9,9 @@ interface CallbackSuccess {
   mode: 'popup' | 'redirect';
   code: string;
   salt?: string;
-  user?: { address: string; email?: string; [key: string]: unknown };
+  id_token?: string;
+  access_token?: string;
+  user?: { address?: string; sub?: string; email?: string; [key: string]: unknown };
   state: string;
   nonce: string;
   clientId: string;
@@ -132,6 +134,8 @@ function CallbackContent() {
               type: 'MYSOCIAL_AUTH_RESULT',
               code: success.code,
               ...(success.salt != null && { salt: success.salt }),
+              ...(success.id_token != null && { id_token: success.id_token }),
+              ...(success.access_token != null && { access_token: success.access_token }),
               ...(success.user != null && { user: success.user }),
               state: success.state,
               nonce: success.nonce,
@@ -150,9 +154,16 @@ function CallbackContent() {
           if (success.user?.address) {
             redirectUrl.searchParams.set('address', success.user.address);
           }
+          if (success.user?.sub) {
+            redirectUrl.searchParams.set('sub', success.user.sub);
+          }
           redirectUrl.searchParams.set('state', success.state);
           redirectUrl.searchParams.set('nonce', success.nonce);
-          window.location.href = redirectUrl.toString();
+          const hashParams = new URLSearchParams();
+          if (success.access_token) hashParams.set('access_token', success.access_token);
+          if (success.id_token) hashParams.set('id_token', success.id_token);
+          const hash = hashParams.toString();
+          window.location.href = hash ? `${redirectUrl.toString()}#${hash}` : redirectUrl.toString();
         }
       } catch {
         if (!cancelled) {

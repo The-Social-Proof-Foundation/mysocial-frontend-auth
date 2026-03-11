@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtToAddress, decodeJwt } from '@socialproof/myso/zklogin';
+import { decodeJwt } from '@socialproof/myso/zklogin';
 import { getAuthState, clearAuthState } from '@/lib/state';
 import { exchangeProviderCode } from '@/lib/api';
+import { deriveEd25519AddressFromSubAndSalt } from '@/lib/address-derivation';
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,19 +78,38 @@ export async function POST(request: NextRequest) {
 
     await clearAuthState();
 
-    let user: { address: string; email?: string } | undefined;
-    if (result.salt != null && result.id_token != null) {
-      const address = jwtToAddress(result.id_token, result.salt, false);
-      let email: string | undefined;
-      try {
-        const payload = decodeJwt(result.id_token) as { email?: string };
-        email = payload.email;
-      } catch {
-        // JWT decode failed; address still valid
+    let user: { address?: string; sub?: string; email?: string; [key: string]: unknown } | undefined;
+    if (result.user != null) {
+      user = { ...result.user };
+      if (user.sub == null && result.id_token != null) {
+        try {
+          const payload = decodeJwt(result.id_token) as { sub?: string };
+          if (payload.sub) user.sub = payload.sub;
+        } catch {
+          // JWT decode failed; keep user as-is
+        }
       }
-      user = { address, ...(email && { email }) };
-    } else if (result.user != null) {
-      user = result.user;
+    } else if (result.salt != null && result.id_token != null) {
+      try {
+        const payload = decodeJwt(result.id_token) as { sub?: string; email?: string };
+        if (payload.sub) {
+          const address = await deriveEd25519AddressFromSubAndSalt(payload.sub, result.salt);
+          user = { address, sub: payload.sub, ...(payload.email && { email: payload.email }) };
+        } else {
+          user = { sub: payload.sub, ...(payload.email && { email: payload.email }) };
+        }
+      } catch {
+        user = undefined;
+      }
+    } else if (result.id_token != null) {
+      try {
+        const payload = decodeJwt(result.id_token) as { sub?: string; email?: string };
+        user = {};
+        if (payload.sub) user.sub = payload.sub;
+        if (payload.email) user.email = payload.email;
+      } catch {
+        // JWT decode failed; no user
+      }
     }
 
     return NextResponse.json({
@@ -97,7 +117,9 @@ export async function POST(request: NextRequest) {
       mode: authState.mode,
       code: result.code,
       ...(result.salt != null && { salt: result.salt }),
-      ...(user != null && { user }),
+      ...(result.id_token != null && { id_token: result.id_token }),
+      ...(result.access_token != null && { access_token: result.access_token }),
+      ...(user != null && Object.keys(user).length > 0 && { user }),
       state: authState.state,
       nonce: authState.nonce,
       clientId: authState.client_id,
