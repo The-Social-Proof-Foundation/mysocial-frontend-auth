@@ -79,7 +79,7 @@ export default function CreateWalletPage() {
       }
 
       if (data.success && data.mode && data.returnOrigin) {
-        completeWalletAuthFlow(data);
+        completeWalletAuthFlow(data, { mnemonic: wallet.mnemonic, source: 'create' });
       } else {
         completeWalletFlow(wallet.address, 'create', { mnemonic: wallet.mnemonic });
       }

@@ -100,7 +100,7 @@ When `provider` is `none` or `default`, the user is redirected to the home page 
 3. Provider redirects back to `/callback`.
 4. auth.testnet.mysocial.network exchanges the provider code for a MySocial auth code (via backend `POST /auth/provider/callback`).
 5. On success:
-   - **popup**: `postMessage` to opener with `{ type: 'MYSOCIAL_AUTH_RESULT', code, salt?, id_token?, access_token?, session_access_token?, refresh_token?, expires_in?, user?, state, nonce, clientId, requestId? }`. Session tokens (`session_access_token`, `refresh_token`, `expires_in`) are consumed by **mysocial-auth** (myso-ts-sdk). `user` includes `{ address?, sub?, email?, ... }` when backend returns them.
+   - **popup**: `postMessage` to opener with `{ type: 'MYSOCIAL_AUTH_RESULT', code, salt?, id_token?, access_token?, session_access_token?, refresh_token?, expires_in?, user?, state, nonce, clientId, requestId?, mnemonic?, privateKey?, wallet_source? }`. Session tokens (`session_access_token`, `refresh_token`, `expires_in`) are consumed by **mysocial-auth** (myso-ts-sdk). `user` includes `{ address?, sub?, email?, ... }` when backend returns them. For wallet create/import flows, `mnemonic` or `privateKey` and `wallet_source` are included so the app can derive the keypair locally.
    - **redirect**: redirect to `redirect_uri` with `?code=...&salt=...&address=...&sub=...&state=...&nonce=...` in query params. Tokens are passed in the **hash fragment** (`#access_token=...&id_token=...&session_access_token=...&refresh_token=...&expires_in=...`) so they stay client-side.
 6. On error:
    - **popup**: `postMessage` with `{ type: 'MYSOCIAL_AUTH_ERROR', error, state, nonce?, clientId?, requestId? }`.
@@ -114,10 +114,10 @@ When the user chooses **Create Wallet** or **Import Wallet** from the login pick
 2. User creates or imports a wallet on `/create-wallet` or `/import-wallet`.
 3. On the final button click, the frontend:
    - Generates a challenge message: `Login to MySocial\n{timestamp}\n{state}`
-   - Signs it with the wallet's Ed25519 keypair (base64url signature)
+   - Signs it with the wallet's Ed25519 keypair (base64 SimpleSignature format)
    - POSTs to `/api/auth/wallet-callback` with `{ address, message, signature, state }`
 4. The auth frontend calls the backend `POST /auth/wallet/callback` to verify the signature and exchange for session tokens.
-5. On success: same as OAuth — `postMessage` `MYSOCIAL_AUTH_RESULT` (popup) or redirect with hash fragment. Popup closes.
+5. On success: same as OAuth — `postMessage` `MYSOCIAL_AUTH_RESULT` (popup) or redirect with hash fragment. For wallet flows, the popup message also includes `mnemonic?`, `privateKey?`, and `wallet_source` so the consuming app can derive the keypair locally for signing. **Security:** mnemonic/privateKey are only sent via postMessage to the validated returnOrigin; never in redirect URLs (avoids leaking to history/logs).
 6. Direct navigation to `/create-wallet` or `/import-wallet` without auth params shows "Please sign in from the app first."
 
 **Backend requirement:** The backend must implement `POST /auth/wallet/callback` (see Backend API below). If not implemented, the wallet flow falls back to `MYSOCIAL_WALLET_RESULT` (no session tokens) when the backend returns an error.
@@ -161,7 +161,7 @@ POST /auth/wallet/callback
 Body: {
   address: string,
   message: string,
-  signature: string,  // base64url Ed25519 signature
+  signature: string,  // base64-encoded Ed25519 SimpleSignature (97 bytes: 0x00 + 64-byte sig + 32-byte pubkey)
   client_id: string,
   redirect_uri: string,
   state: string,

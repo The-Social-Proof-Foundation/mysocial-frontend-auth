@@ -98,7 +98,9 @@ export default function ImportWalletPage() {
       }
 
       if (data.success && data.mode && data.returnOrigin) {
-        completeWalletAuthFlow(data);
+        completeWalletAuthFlow(data, trimmed.includes(' ')
+          ? { mnemonic: trimmed, source: 'import' }
+          : { privateKey: trimmed, source: 'import' });
       } else {
         completeWalletFlow(
           address,

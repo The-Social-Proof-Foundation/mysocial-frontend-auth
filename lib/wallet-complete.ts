@@ -95,35 +95,51 @@ export interface WalletAuthSuccess {
   returnOrigin: string;
 }
 
+/** Wallet credentials for keypair derivation. Only passed via postMessage to validated returnOrigin; never in URLs. */
+export interface WalletAuthWalletData {
+  mnemonic?: string;
+  privateKey?: string;
+  source: 'create' | 'import';
+}
+
 /**
  * Complete the wallet auth flow with session tokens (same as OAuth callback).
  * postMessage MYSOCIAL_AUTH_RESULT and dismiss popup, or redirect with hash fragment.
+ * When walletData is provided (wallet create/import flow), includes mnemonic or privateKey
+ * so the consuming app can derive the keypair locally for signing. Only sent via postMessage
+ * to returnOrigin (never in redirect URLs to avoid leaking to history/logs).
  */
-export function completeWalletAuthFlow(success: WalletAuthSuccess): void {
+export function completeWalletAuthFlow(
+  success: WalletAuthSuccess,
+  walletData?: WalletAuthWalletData
+): void {
   if (typeof window === 'undefined') return;
 
   if (success.mode === 'popup' && window.opener) {
     try {
-      window.opener.postMessage(
-        {
-          type: 'MYSOCIAL_AUTH_RESULT',
-          code: success.code,
-          ...(success.salt != null && { salt: success.salt }),
-          ...(success.id_token != null && { id_token: success.id_token }),
-          ...(success.access_token != null && { access_token: success.access_token }),
-          ...(success.session_access_token != null && {
-            session_access_token: success.session_access_token,
-          }),
-          ...(success.refresh_token != null && { refresh_token: success.refresh_token }),
-          ...(success.expires_in != null && { expires_in: success.expires_in }),
-          ...(success.user != null && { user: success.user }),
-          state: success.state,
-          nonce: success.nonce,
-          clientId: success.clientId,
-          requestId: success.requestId,
-        },
-        success.returnOrigin
-      );
+      const message: Record<string, unknown> = {
+        type: 'MYSOCIAL_AUTH_RESULT',
+        code: success.code,
+        ...(success.salt != null && { salt: success.salt }),
+        ...(success.id_token != null && { id_token: success.id_token }),
+        ...(success.access_token != null && { access_token: success.access_token }),
+        ...(success.session_access_token != null && {
+          session_access_token: success.session_access_token,
+        }),
+        ...(success.refresh_token != null && { refresh_token: success.refresh_token }),
+        ...(success.expires_in != null && { expires_in: success.expires_in }),
+        ...(success.user != null && { user: success.user }),
+        state: success.state,
+        nonce: success.nonce,
+        clientId: success.clientId,
+        requestId: success.requestId,
+      };
+      if (walletData != null) {
+        if (walletData.mnemonic != null) message.mnemonic = walletData.mnemonic;
+        if (walletData.privateKey != null) message.privateKey = walletData.privateKey;
+        message.wallet_source = walletData.source;
+      }
+      window.opener.postMessage(message, success.returnOrigin);
       window.close();
     } catch {
       console.error('[wallet-complete] postMessage failed');
