@@ -74,7 +74,8 @@ export function getAppRedirectUri(): string {
 
 /**
  * Sign a message with Ed25519. Accepts mnemonic (12-24 words) or private key (hex or comma-separated).
- * Returns signature as base64url (URL-safe base64, no padding).
+ * Returns base64-encoded Ed25519 SimpleSignature (97 bytes: 0x00 + 64-byte sig + 32-byte pubkey)
+ * to match myso-salt-service auth_wallet_callback expectations.
  */
 export async function signMessage(
   mnemonicOrPrivateKey: string,
@@ -94,8 +95,15 @@ export async function signMessage(
   }
 
   const messageBytes = new TextEncoder().encode(message);
-  const signature = await keypair.sign(messageBytes);
-  return uint8ArrayToBase64url(signature);
+  const sigBytes = await keypair.sign(messageBytes);
+  const pubkeyBytes = keypair.getPublicKey().toRawBytes();
+
+  const simpleSig = new Uint8Array(1 + sigBytes.length + pubkeyBytes.length);
+  simpleSig[0] = 0x00;
+  simpleSig.set(sigBytes, 1);
+  simpleSig.set(pubkeyBytes, 1 + sigBytes.length);
+
+  return uint8ArrayToBase64(simpleSig);
 }
 
 async function getKeypairFromPrivateKey(privateKey: string): Promise<Ed25519Keypair> {
@@ -118,11 +126,10 @@ async function getKeypairFromPrivateKey(privateKey: string): Promise<Ed25519Keyp
   return Ed25519Keypair.fromSecretKey(keyBytes);
 }
 
-function uint8ArrayToBase64url(bytes: Uint8Array): string {
+function uint8ArrayToBase64(bytes: Uint8Array): string {
   let binary = '';
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
-  const base64 = btoa(binary);
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return btoa(binary);
 }
