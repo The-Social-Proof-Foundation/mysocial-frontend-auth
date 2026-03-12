@@ -33,6 +33,7 @@ cp .env.example .env.local
 | `NEXT_PUBLIC_TWITCH_CLIENT_ID` | Yes* | Twitch client ID |
 | `NEXT_PUBLIC_AUTH_CALLBACK_URL` | No | Override callback URL (default: `https://auth.testnet.mysocial.network/callback`) |
 | `NEXT_PUBLIC_AUTH_CALLBACK_PATH` | No | Override backend path (default: `/auth/provider/callback`). Use if backend uses e.g. `/api/auth/provider/callback` |
+| `NEXT_PUBLIC_AUTH_WALLET_CALLBACK_PATH` | No | Override backend wallet auth path (default: `/auth/wallet/callback`) |
 | `NEXT_PUBLIC_DEV_CLIENT_ID` | No* | Platform client ID for direct access; must match backend allowlist |
 | `NEXT_PUBLIC_DEV_CODE_CHALLENGE` | No* | PKCE S256 code challenge for direct access |
 | `NEXT_PUBLIC_DEV_REDIRECT_URI` | No | Override redirect URI for direct access (default: `{origin}/callback`) |
@@ -99,11 +100,38 @@ When `provider` is `none` or `default`, the user is redirected to the home page 
 3. Provider redirects back to `/callback`.
 4. auth.testnet.mysocial.network exchanges the provider code for a MySocial auth code (via backend `POST /auth/provider/callback`).
 5. On success:
-   - **popup**: `postMessage` to opener with `{ type: 'MYSOCIAL_AUTH_RESULT', code, salt?, id_token?, access_token?, user?, state, nonce, clientId, requestId? }`. `user` includes `{ address?, sub?, email?, ... }` when backend returns them. Tokens (`id_token`, `access_token`) are included when backend returns them.
-   - **redirect**: redirect to `redirect_uri` with `?code=...&salt=...&address=...&sub=...&state=...&nonce=...` in query params. Tokens are passed in the **hash fragment** (`#access_token=...&id_token=...`) so they stay client-side and are not sent to the server or logged.
+   - **popup**: `postMessage` to opener with `{ type: 'MYSOCIAL_AUTH_RESULT', code, salt?, id_token?, access_token?, session_access_token?, refresh_token?, expires_in?, user?, state, nonce, clientId, requestId? }`. Session tokens (`session_access_token`, `refresh_token`, `expires_in`) are consumed by **mysocial-auth** (myso-ts-sdk). `user` includes `{ address?, sub?, email?, ... }` when backend returns them.
+   - **redirect**: redirect to `redirect_uri` with `?code=...&salt=...&address=...&sub=...&state=...&nonce=...` in query params. Tokens are passed in the **hash fragment** (`#access_token=...&id_token=...&session_access_token=...&refresh_token=...&expires_in=...`) so they stay client-side.
 6. On error:
    - **popup**: `postMessage` with `{ type: 'MYSOCIAL_AUTH_ERROR', error, state, nonce?, clientId?, requestId? }`.
    - **redirect**: redirect to `redirect_uri` with `?error=...&state=...`.
+
+## Wallet Auth Flow
+
+When the user chooses **Create Wallet** or **Import Wallet** from the login picker (`provider=none`):
+
+1. Auth params (client_id, redirect_uri, state, nonce, mode, return_origin) are stored in session.
+2. User creates or imports a wallet on `/create-wallet` or `/import-wallet`.
+3. On the final button click, the frontend:
+   - Generates a challenge message: `Login to MySocial\n{timestamp}\n{state}`
+   - Signs it with the wallet's Ed25519 keypair (base64url signature)
+   - POSTs to `/api/auth/wallet-callback` with `{ address, message, signature, state }`
+4. The auth frontend calls the backend `POST /auth/wallet/callback` to verify the signature and exchange for session tokens.
+5. On success: same as OAuth — `postMessage` `MYSOCIAL_AUTH_RESULT` (popup) or redirect with hash fragment. Popup closes.
+6. Direct navigation to `/create-wallet` or `/import-wallet` without auth params shows "Please sign in from the app first."
+
+**Backend requirement:** The backend must implement `POST /auth/wallet/callback` (see Backend API below). If not implemented, the wallet flow falls back to `MYSOCIAL_WALLET_RESULT` (no session tokens) when the backend returns an error.
+
+## Session Token Flow
+
+When the backend (myso-salt-service) returns session tokens (`session_access_token`, `refresh_token`, `expires_in`), consumers (e.g. **mysocial-auth** in myso-ts-sdk) must:
+
+- **Store** `session_access_token` (30 min) in memory or short-lived store; `refresh_token` (30 days) securely.
+- **Refresh** before expiry: call `POST /auth/refresh` with `{ refresh_token }` when the access token is expired or within 1–2 min of expiry. Replace stored tokens with the new ones (rotation).
+- **Logout**: call `POST /auth/logout` with `{ refresh_token }`, then clear all stored tokens.
+- **API calls**: send `Authorization: Bearer <session_access_token>` for `/salt` and other protected endpoints.
+
+This auth frontend provides `lib/session-api.ts` (`refreshSession`, `logoutSession`, `getAuthHeaders`) and `lib/session-client.ts` (`SessionClient` with `refreshIfNeeded`, `logout`) for consumer use. On 401 from `/auth/refresh`, treat as session revoked and redirect to login. On 429, retry with backoff (backend limits ~10/min per IP).
 
 ## Backend API
 
@@ -121,10 +149,34 @@ Body: {
   nonce: string,
   request_id?: string
 }
-Response: { code: string, salt?: string, id_token?: string, access_token?: string, user?: { address?: string, sub?: string, email?: string, ... } }
+Response: { code: string, salt?: string, id_token?: string, access_token?: string, session_access_token?: string, refresh_token?: string, expires_in?: number, user?: { address?: string, sub?: string, email?: string, ... } }
 ```
 
-The backend validates `client_id`, `redirect_uri`, exchanges the provider code for tokens, creates a MySocial session, and returns an auth code bound to `code_challenge`. Backend returns **both** `id_token` and `access_token` when possible; **at least id_token** is required (JWT with `sub` for salt service validation). When the backend fetches a salt (e.g. via the salt service), it may include `salt` in the response; the auth frontend passes it through to the consumer for Ed25519 keypair derivation (sub + salt). The auth frontend forwards `id_token`, `access_token`, and `user` (including `sub`) in `MYSOCIAL_AUTH_RESULT` (popup) and in the redirect URL (query params for code/salt/state/nonce/address/sub; hash fragment for tokens).
+The backend validates `client_id`, `redirect_uri`, exchanges the provider code for tokens, creates a MySocial session, and returns an auth code bound to `code_challenge`. When `JWT_SIGNING_KEY` is configured, it also returns `session_access_token` (JWT, 30 min), `refresh_token` (opaque, 30 days), and `expires_in` (seconds). The auth frontend forwards these in `MYSOCIAL_AUTH_RESULT` and redirect hash.
+
+**Wallet auth endpoint:**
+
+```
+POST /auth/wallet/callback
+Body: {
+  address: string,
+  message: string,
+  signature: string,  // base64url Ed25519 signature
+  client_id: string,
+  redirect_uri: string,
+  state: string,
+  nonce: string,
+  request_id?: string
+}
+Response: Same as /auth/provider/callback — { code, session_access_token?, refresh_token?, expires_in?, user?: { address, sub?, email? } }
+```
+
+The backend verifies the Ed25519 signature over `message` for `address`, creates a MySocial session, and returns tokens. Challenge format: `Login to MySocial\n{timestamp}\n{state}`.
+
+**Session endpoints:**
+
+- `POST /auth/refresh` — Body: `{ refresh_token }`. Response: `{ access_token, refresh_token, expires_in }`. 401 = session revoked; 429 = rate limited.
+- `POST /auth/logout` — Body: `{ refresh_token }`. Response: 204 or `{ ok: true }`.
 
 ## Salt Service
 
@@ -132,7 +184,22 @@ The backend validates `client_id`, `redirect_uri`, exchanges the provider code f
 
 This auth frontend calls `POST ${NEXT_PUBLIC_API_BASE_URL}/auth/provider/callback` to exchange the OAuth code. The salt service implements that endpoint, exchanges the code for tokens, fetches the salt, and returns `{ code, salt }`.
 
-**Option 1 – Call `POST /salt` when you already have a token:**
+**Option 1 – Call `POST /salt` when you have a session token (preferred):**
+
+```js
+const res = await fetch(`${SALT_SERVICE_URL}/salt`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${sessionAccessToken}`,
+  },
+});
+const { salt } = await res.json(); // BigInt decimal string, ready for zkLogin
+```
+
+Refresh `session_access_token` via `POST /auth/refresh` before expiry (30 min).
+
+**Option 2 – Call `POST /salt` with provider tokens (legacy):**
 
 Google/Apple (JWT):
 
@@ -142,7 +209,7 @@ const res = await fetch(`${SALT_SERVICE_URL}/salt`, {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ jwt: idToken }),
 });
-const { salt } = await res.json(); // BigInt decimal string, ready for zkLogin
+const { salt } = await res.json();
 ```
 
 Facebook/Twitch (access token):
@@ -156,7 +223,7 @@ const res = await fetch(`${SALT_SERVICE_URL}/salt`, {
 const { salt } = await res.json();
 ```
 
-**Option 2 – Call `POST /auth/provider/callback` when you have an OAuth code** (used by this auth frontend):
+**Option 3 – Call `POST /auth/provider/callback` when you have an OAuth code** (used by this auth frontend):
 
 ```js
 const res = await fetch(`${SALT_SERVICE_URL}/auth/provider/callback`, {
@@ -207,6 +274,6 @@ Configure your domain (e.g. `auth.testnet.mysocial.network`) in Railway's projec
 | `/` | Homepage; shows login/wallet UI when direct access env vars are set or when arriving via `provider=none` |
 | `/login` | Entry point; validates params, stores state, redirects to provider OAuth |
 | `/callback` | Receives provider callback; exchanges code; postMessage or redirect |
-| `/create-wallet` | Create new wallet; generate mnemonic, store, redirect to app |
-| `/import-wallet` | Import wallet from mnemonic or private key; store, redirect to app |
+| `/create-wallet` | Create new wallet; sign challenge, exchange for session tokens, postMessage MYSOCIAL_AUTH_RESULT |
+| `/import-wallet` | Import wallet from mnemonic or private key; sign challenge, exchange for session tokens, postMessage MYSOCIAL_AUTH_RESULT |
 | `/error` | Invalid params or failed auth |

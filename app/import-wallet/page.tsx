@@ -5,17 +5,33 @@ import Link from 'next/link';
 import { ArrowLeft, Wallet, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { importWalletFromMnemonic, importWalletFromPrivateKey } from '@/lib/wallet';
-import { completeWalletFlow } from '@/lib/wallet-complete';
+import {
+  importWalletFromMnemonic,
+  importWalletFromPrivateKey,
+  signMessage,
+} from '@/lib/wallet';
+import { completeWalletAuthFlow, completeWalletFlow } from '@/lib/wallet-complete';
+import { getPendingAuthParams } from '@/lib/auth-actions';
+import type { LoginParams } from '@/lib/params';
+
+function buildChallengeMessage(state: string): string {
+  const timestamp = Date.now();
+  return `Login to MySocial\n${timestamp}\n${state}`;
+}
 
 export default function ImportWalletPage() {
   const [input, setInput] = useState('');
+  const [pendingParams, setPendingParams] = useState<LoginParams | null | undefined>(undefined);
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     textareaRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    getPendingAuthParams().then(setPendingParams);
   }, []);
 
   const handleImport = async () => {
@@ -27,25 +43,69 @@ export default function ImportWalletPage() {
 
     try {
       let address: string;
-      let walletData: { mnemonic?: string; privateKey?: string } | undefined;
+      let signKey: string;
 
       if (trimmed.includes(' ')) {
         address = await importWalletFromMnemonic(trimmed);
-        walletData = { mnemonic: trimmed };
+        signKey = trimmed;
       } else if (trimmed.startsWith('0x') || /^[a-fA-F0-9]{64}$/.test(trimmed)) {
         address = await importWalletFromPrivateKey(trimmed);
-        walletData = { privateKey: trimmed };
+        signKey = trimmed;
       } else {
         const keyArray = trimmed.split(',').map(Number);
         if (keyArray.length === 32) {
           address = await importWalletFromPrivateKey(trimmed);
-          walletData = { privateKey: trimmed };
+          signKey = trimmed;
         } else {
           throw new Error('Invalid input. Enter a mnemonic phrase (12-24 words) or private key (hex or comma-separated).');
         }
       }
 
-      completeWalletFlow(address, 'import', walletData);
+      if (pendingParams === null) {
+        setError('Please sign in from the app first.');
+        return;
+      }
+
+      if (!pendingParams) {
+        completeWalletFlow(
+          address,
+          'import',
+          trimmed.includes(' ') ? { mnemonic: trimmed } : { privateKey: trimmed }
+        );
+        return;
+      }
+
+      const message = buildChallengeMessage(pendingParams.state);
+      const signature = await signMessage(signKey, message);
+
+      const res = await fetch('/api/auth/wallet-callback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address,
+          message,
+          signature,
+          state: pendingParams.state,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const errMsg = data.message ?? data.error ?? 'Authentication failed';
+        setError(errMsg);
+        return;
+      }
+
+      if (data.success && data.mode && data.returnOrigin) {
+        completeWalletAuthFlow(data);
+      } else {
+        completeWalletFlow(
+          address,
+          'import',
+          trimmed.includes(' ') ? { mnemonic: trimmed } : { privateKey: trimmed }
+        );
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Import failed');
     } finally {
@@ -79,10 +139,15 @@ export default function ImportWalletPage() {
             )}
           </div>
 
+          {pendingParams === null && (
+            <p className="text-sm text-muted-foreground text-center">
+              Please sign in from the app first.
+            </p>
+          )}
           <Button
             className="w-full font-chakra-petch py-3"
             onClick={handleImport}
-            disabled={isImporting || !input.trim()}
+            disabled={isImporting || !input.trim() || pendingParams === null}
           >
             {isImporting ? (
               <>

@@ -1,19 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ArrowLeft, Copy, Eye, EyeOff, Download, Loader2, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { generateNewWallet } from '@/lib/wallet';
-import { completeWalletFlow } from '@/lib/wallet-complete';
+import { generateNewWallet, signMessage } from '@/lib/wallet';
+import { completeWalletAuthFlow, completeWalletFlow } from '@/lib/wallet-complete';
+import { getPendingAuthParams } from '@/lib/auth-actions';
+import type { LoginParams } from '@/lib/params';
+
+function buildChallengeMessage(state: string): string {
+  const timestamp = Date.now();
+  return `Login to MySocial\n${timestamp}\n${state}`;
+}
 
 export default function CreateWalletPage() {
-  const router = useRouter();
+  const [pendingParams, setPendingParams] = useState<LoginParams | null | undefined>(undefined);
   const [step, setStep] = useState<'warning' | 'generating' | 'final'>('warning');
   const [wallet, setWallet] = useState<{ address: string; mnemonic: string } | null>(null);
   const [showMnemonic, setShowMnemonic] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    getPendingAuthParams().then(setPendingParams);
+  }, []);
 
   const handleGenerate = async () => {
     setStep('generating');
@@ -28,11 +39,54 @@ export default function CreateWalletPage() {
     }
   };
 
-  const handleGetStarted = () => {
-    if (wallet) {
+  const handleGetStarted = async () => {
+    if (!wallet) return;
+
+    if (pendingParams === null) {
+      setError('Please sign in from the app first.');
+      return;
+    }
+
+    if (!pendingParams) {
       completeWalletFlow(wallet.address, 'create', { mnemonic: wallet.mnemonic });
-    } else {
-      router.push('/');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const message = buildChallengeMessage(pendingParams.state);
+      const signature = await signMessage(wallet.mnemonic, message);
+
+      const res = await fetch('/api/auth/wallet-callback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: wallet.address,
+          message,
+          signature,
+          state: pendingParams.state,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const errMsg = data.message ?? data.error ?? 'Authentication failed';
+        setError(errMsg);
+        return;
+      }
+
+      if (data.success && data.mode && data.returnOrigin) {
+        completeWalletAuthFlow(data);
+      } else {
+        completeWalletFlow(wallet.address, 'create', { mnemonic: wallet.mnemonic });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Authentication failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -167,10 +221,31 @@ export default function CreateWalletPage() {
               </div>
             </div>
 
-            <Button className="w-full font-chakra-petch py-3" onClick={handleGetStarted}>
-              <Wallet className="mr-2 h-4 w-4" />
-              Get Started
+            {error && (
+              <p className="text-sm text-destructive text-center">{error}</p>
+            )}
+            <Button
+              className="w-full font-chakra-petch py-3"
+              onClick={handleGetStarted}
+              disabled={isSubmitting || pendingParams === undefined || pendingParams === null}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  <Wallet className="mr-2 h-4 w-4" />
+                  Get Started
+                </>
+              )}
             </Button>
+            {pendingParams === null && (
+              <p className="text-sm text-muted-foreground text-center">
+                Please sign in from the app first.
+              </p>
+            )}
           </div>
         )}
       </div>

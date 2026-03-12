@@ -71,3 +71,58 @@ export function getAppRedirectUri(): string {
   if (typeof window !== 'undefined') return window.location.origin;
   return 'http://localhost:3000';
 }
+
+/**
+ * Sign a message with Ed25519. Accepts mnemonic (12-24 words) or private key (hex or comma-separated).
+ * Returns signature as base64url (URL-safe base64, no padding).
+ */
+export async function signMessage(
+  mnemonicOrPrivateKey: string,
+  message: string
+): Promise<string> {
+  const trimmed = mnemonicOrPrivateKey.trim();
+  let keypair: Ed25519Keypair;
+
+  if (trimmed.includes(' ')) {
+    const words = trimmed.split(/\s+/);
+    if (words.length < 12 || words.length > 24) {
+      throw new Error('Invalid mnemonic: must be 12-24 words');
+    }
+    keypair = Ed25519Keypair.deriveKeypair(trimmed, DERIVATION_PATH);
+  } else {
+    keypair = await getKeypairFromPrivateKey(trimmed);
+  }
+
+  const messageBytes = new TextEncoder().encode(message);
+  const signature = await keypair.sign(messageBytes);
+  return uint8ArrayToBase64url(signature);
+}
+
+async function getKeypairFromPrivateKey(privateKey: string): Promise<Ed25519Keypair> {
+  let keyBytes: Uint8Array;
+
+  if (privateKey.startsWith('0x')) {
+    const hex = privateKey.slice(2);
+    if (hex.length !== 64) {
+      throw new Error('Invalid private key: hex key must be 64 characters (32 bytes)');
+    }
+    keyBytes = new Uint8Array(hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
+  } else {
+    const keyArray = privateKey.split(',').map(Number);
+    if (keyArray.length !== 32) {
+      throw new Error('Invalid private key: must be 32 bytes');
+    }
+    keyBytes = new Uint8Array(keyArray);
+  }
+
+  return Ed25519Keypair.fromSecretKey(keyBytes);
+}
+
+function uint8ArrayToBase64url(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}

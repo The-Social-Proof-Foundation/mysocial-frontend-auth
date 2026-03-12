@@ -11,6 +11,9 @@ interface CallbackSuccess {
   salt?: string;
   id_token?: string;
   access_token?: string;
+  session_access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
   user?: { address?: string; sub?: string; email?: string; [key: string]: unknown };
   state: string;
   nonce: string;
@@ -136,6 +139,9 @@ function CallbackContent() {
               ...(success.salt != null && { salt: success.salt }),
               ...(success.id_token != null && { id_token: success.id_token }),
               ...(success.access_token != null && { access_token: success.access_token }),
+              ...(success.session_access_token != null && { session_access_token: success.session_access_token }),
+              ...(success.refresh_token != null && { refresh_token: success.refresh_token }),
+              ...(success.expires_in != null && { expires_in: success.expires_in }),
               ...(success.user != null && { user: success.user }),
               state: success.state,
               nonce: success.nonce,
@@ -162,6 +168,9 @@ function CallbackContent() {
           const hashParams = new URLSearchParams();
           if (success.access_token) hashParams.set('access_token', success.access_token);
           if (success.id_token) hashParams.set('id_token', success.id_token);
+          if (success.session_access_token) hashParams.set('session_access_token', success.session_access_token);
+          if (success.refresh_token) hashParams.set('refresh_token', success.refresh_token);
+          if (success.expires_in != null) hashParams.set('expires_in', String(success.expires_in));
           const hash = hashParams.toString();
           window.location.href = hash ? `${redirectUrl.toString()}#${hash}` : redirectUrl.toString();
         }

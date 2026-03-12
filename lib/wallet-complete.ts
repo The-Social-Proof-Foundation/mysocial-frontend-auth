@@ -76,9 +76,98 @@ export interface WalletResultMessage {
   privateKey?: string;
 }
 
+export interface WalletAuthSuccess {
+  success: true;
+  mode: 'popup' | 'redirect';
+  code: string;
+  salt?: string;
+  id_token?: string;
+  access_token?: string;
+  session_access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  user?: { address?: string; sub?: string; email?: string; [key: string]: unknown };
+  state: string;
+  nonce: string;
+  clientId: string;
+  requestId?: string;
+  redirectUri: string;
+  returnOrigin: string;
+}
+
+/**
+ * Complete the wallet auth flow with session tokens (same as OAuth callback).
+ * postMessage MYSOCIAL_AUTH_RESULT and dismiss popup, or redirect with hash fragment.
+ */
+export function completeWalletAuthFlow(success: WalletAuthSuccess): void {
+  if (typeof window === 'undefined') return;
+
+  if (success.mode === 'popup' && window.opener) {
+    try {
+      window.opener.postMessage(
+        {
+          type: 'MYSOCIAL_AUTH_RESULT',
+          code: success.code,
+          ...(success.salt != null && { salt: success.salt }),
+          ...(success.id_token != null && { id_token: success.id_token }),
+          ...(success.access_token != null && { access_token: success.access_token }),
+          ...(success.session_access_token != null && {
+            session_access_token: success.session_access_token,
+          }),
+          ...(success.refresh_token != null && { refresh_token: success.refresh_token }),
+          ...(success.expires_in != null && { expires_in: success.expires_in }),
+          ...(success.user != null && { user: success.user }),
+          state: success.state,
+          nonce: success.nonce,
+          clientId: success.clientId,
+          requestId: success.requestId,
+        },
+        success.returnOrigin
+      );
+      window.close();
+    } catch {
+      console.error('[wallet-complete] postMessage failed');
+      const redirectUrl = new URL(success.redirectUri);
+      redirectUrl.searchParams.set('code', success.code);
+      if (success.user?.address) redirectUrl.searchParams.set('address', success.user.address);
+      redirectUrl.searchParams.set('state', success.state);
+      redirectUrl.searchParams.set('nonce', success.nonce);
+      const hashParams = new URLSearchParams();
+      if (success.session_access_token) hashParams.set('session_access_token', success.session_access_token);
+      if (success.refresh_token) hashParams.set('refresh_token', success.refresh_token);
+      if (success.expires_in != null) hashParams.set('expires_in', String(success.expires_in));
+      const hash = hashParams.toString();
+      window.location.href = hash ? `${redirectUrl.toString()}#${hash}` : redirectUrl.toString();
+    }
+  } else {
+    const redirectUrl = new URL(success.redirectUri);
+    redirectUrl.searchParams.set('code', success.code);
+    if (success.salt != null) {
+      redirectUrl.searchParams.set('salt', success.salt);
+    }
+    if (success.user?.address) {
+      redirectUrl.searchParams.set('address', success.user.address);
+    }
+    if (success.user?.sub) {
+      redirectUrl.searchParams.set('sub', success.user.sub);
+    }
+    redirectUrl.searchParams.set('state', success.state);
+    redirectUrl.searchParams.set('nonce', success.nonce);
+    const hashParams = new URLSearchParams();
+    if (success.access_token) hashParams.set('access_token', success.access_token);
+    if (success.id_token) hashParams.set('id_token', success.id_token);
+    if (success.session_access_token) hashParams.set('session_access_token', success.session_access_token);
+    if (success.refresh_token) hashParams.set('refresh_token', success.refresh_token);
+    if (success.expires_in != null) hashParams.set('expires_in', String(success.expires_in));
+    const hash = hashParams.toString();
+    window.location.href = hash ? `${redirectUrl.toString()}#${hash}` : redirectUrl.toString();
+  }
+}
+
 /**
  * Complete the wallet flow: if in a popup, postMessage to opener and close.
  * Otherwise redirect to the app with address in query params.
+ * Use when no auth params (fallback for direct nav); prefer completeWalletAuthFlow when session tokens are available.
  */
 export function completeWalletFlow(
   address: string,
