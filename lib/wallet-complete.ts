@@ -145,9 +145,14 @@ export function completeWalletAuthFlow(
       console.error('[wallet-complete] postMessage failed');
       const redirectUrl = new URL(success.redirectUri);
       redirectUrl.searchParams.set('code', success.code);
+      if (success.salt != null) redirectUrl.searchParams.set('salt', success.salt);
       if (success.user?.address) redirectUrl.searchParams.set('address', success.user.address);
+      if (success.user?.sub) redirectUrl.searchParams.set('sub', success.user.sub);
       redirectUrl.searchParams.set('state', success.state);
       redirectUrl.searchParams.set('nonce', success.nonce);
+      redirectUrl.searchParams.set('clientId', success.clientId);
+      if (success.requestId != null) redirectUrl.searchParams.set('requestId', success.requestId);
+      if (success.user?.email != null) redirectUrl.searchParams.set('email', success.user.email);
       if (success.mode === 'popup') redirectUrl.searchParams.set('_popup_fallback', '1');
       const hashParams = new URLSearchParams();
       if (success.session_access_token) hashParams.set('session_access_token', success.session_access_token);
@@ -170,6 +175,9 @@ export function completeWalletAuthFlow(
     }
     redirectUrl.searchParams.set('state', success.state);
     redirectUrl.searchParams.set('nonce', success.nonce);
+    redirectUrl.searchParams.set('clientId', success.clientId);
+    if (success.requestId != null) redirectUrl.searchParams.set('requestId', success.requestId);
+    if (success.user?.email != null) redirectUrl.searchParams.set('email', success.user.email);
     if (success.mode === 'popup') redirectUrl.searchParams.set('_popup_fallback', '1');
     const hashParams = new URLSearchParams();
     if (success.access_token) hashParams.set('access_token', success.access_token);

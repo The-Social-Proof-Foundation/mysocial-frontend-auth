@@ -113,10 +113,12 @@ Safari (and iOS WebKit) clears `window.opener` after OAuth redirects in popups, 
 **Consuming app requirement:** The redirect_uri page must handle `_popup_fallback=1`:
 
 1. On load, check for `_popup_fallback=1` in the URL and auth params (code, state, hash fragment).
-2. If present: broadcast the auth result via `BroadcastChannel` (name: `mysocial-auth`), then call `window.close()`.
+2. If present: parse the full payload from query params and hash fragment, broadcast via `BroadcastChannel` (name: `mysocial-auth`), then call `window.close()`.
 3. The main window must listen for `BroadcastChannel` in addition to `postMessage` and process `MYSOCIAL_AUTH_RESULT` the same way.
 
-Payload shape matches `MYSOCIAL_AUTH_RESULT`: `{ type: 'MYSOCIAL_AUTH_RESULT', code, salt?, id_token?, access_token?, session_access_token?, refresh_token?, expires_in?, user?, state, nonce, clientId, requestId? }`. Parse from query params and hash fragment.
+**Redirect URL params** (query): `code`, `salt?`, `address?`, `sub?`, `state`, `nonce`, `clientId`, `requestId?`, `email?`, `_popup_fallback=1`. **Hash fragment**: `access_token?`, `id_token?`, `session_access_token?`, `refresh_token?`, `expires_in?`. Build `user` as `{ address?, sub?, email? }` from `address`, `sub`, `email` query params.
+
+Payload shape: `{ type: 'MYSOCIAL_AUTH_RESULT', code, salt?, id_token?, access_token?, session_access_token?, refresh_token?, expires_in?, user?, state, nonce, clientId, requestId? }`.
 
 ## Wallet Auth Flow
 
