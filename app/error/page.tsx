@@ -31,12 +31,12 @@ function ErrorContent() {
         {displayMessage}
       </p>
       {isInvalidParams && (
-        <p className="text-center text-sm text-muted-foreground max-w-md">
+        <p className="text-center text-xs font-[var(--font-chakra-petch)] text-muted-foreground max-w-md">
           The login URL must include all required OAuth parameters (client_id, redirect_uri, state, nonce, return_origin, mode, provider, code_challenge, code_challenge_method). See README for the URL contract.
         </p>
       )}
       {isInvalidParams && isDev && (
-        <p className="text-center text-xs text-muted-foreground max-w-md">
+        <p className="text-center text-xs font-[var(--font-chakra-petch)] text-muted-foreground max-w-md">
           For local testing without a client app, set NEXT_PUBLIC_DEV_CLIENT_ID and NEXT_PUBLIC_DEV_CODE_CHALLENGE in .env.
         </p>
       )}

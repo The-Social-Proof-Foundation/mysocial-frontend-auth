@@ -79,7 +79,7 @@ export function LoginWalletModal() {
         <p className="font-chakra-petch text-3xl font-medium text-foreground text-center max-w-md">
           MySocial Testnet
         </p>
-        <p className="text-sm text-muted-foreground text-center max-w-sm mt-4">
+        <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center max-w-sm mt-4">
           Set NEXT_PUBLIC_DEV_CLIENT_ID and NEXT_PUBLIC_DEV_CODE_CHALLENGE in .env to enable the login UI.
         </p>
       </div>
@@ -133,7 +133,7 @@ export function LoginWalletModal() {
 
       <div className="relative flex items-center w-full max-w-[320px] py-8">
         <div className="flex-grow border-t border-white/20" />
-        <span className="px-3 text-xs text-muted-foreground">Or continue with</span>
+        <span className="px-3 text-xs font-[var(--font-chakra-petch)] text-muted-foreground">Or continue with</span>
         <div className="flex-grow border-t border-white/20" />
       </div>
 

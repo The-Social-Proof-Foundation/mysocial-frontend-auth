@@ -91,6 +91,7 @@ function CallbackContent() {
           const redirectUrl = new URL(errorRedirectUri);
           redirectUrl.searchParams.set('error', errMsg);
           if (state) redirectUrl.searchParams.set('state', state);
+          if (errorMode === 'popup') redirectUrl.searchParams.set('_popup_fallback', '1');
           window.location.href = redirectUrl.toString();
         } else {
           setErrorMessage(errMsg);
@@ -165,6 +166,7 @@ function CallbackContent() {
           }
           redirectUrl.searchParams.set('state', success.state);
           redirectUrl.searchParams.set('nonce', success.nonce);
+          if (success.mode === 'popup') redirectUrl.searchParams.set('_popup_fallback', '1');
           const hashParams = new URLSearchParams();
           if (success.access_token) hashParams.set('access_token', success.access_token);
           if (success.id_token) hashParams.set('id_token', success.id_token);
@@ -194,7 +196,7 @@ function CallbackContent() {
         <p className="text-destructive text-center">{errorMessage}</p>
         {errorDetails && (
           <details className="w-full max-w-md text-left">
-            <summary className="text-sm text-muted-foreground cursor-pointer hover:underline">
+            <summary className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground cursor-pointer hover:underline">
               Technical details
             </summary>
             <pre className="mt-2 p-3 text-xs bg-muted rounded overflow-auto break-all">
@@ -204,7 +206,7 @@ function CallbackContent() {
         )}
         <a
           href="/error?reason=callback_failed"
-          className="text-sm text-foreground hover:underline"
+          className="text-xs font-[var(--font-chakra-petch)] text-foreground hover:underline"
         >
           Return to error page
         </a>
@@ -215,7 +217,7 @@ function CallbackContent() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background text-foreground">
       <LoadingSpinner className="text-foreground" />
-      <p className="text-sm text-muted-foreground">
+      <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground">
         Completing sign in...
       </p>
     </div>
@@ -228,7 +230,7 @@ export default function CallbackPage() {
       fallback={
         <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
           <LoadingSpinner className="text-foreground" />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground">
             Loading...
           </p>
         </div>

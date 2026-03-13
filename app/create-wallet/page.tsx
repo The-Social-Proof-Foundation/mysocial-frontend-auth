@@ -99,11 +99,11 @@ export default function CreateWalletPage() {
               <h1 className="font-chakra-petch text-xl font-semibold text-center">
                 Secure Your Recovery Phrase
               </h1>
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
                 Before creating a wallet, understand:
               </p>
             </div>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <ul className="space-y-2 text-xs font-[var(--font-chakra-petch)] text-muted-foreground">
               <li className="flex gap-2">
                 <span>•</span>
                 <span>If you lose your recovery phrase, you cannot recover your wallet</span>
@@ -118,7 +118,7 @@ export default function CreateWalletPage() {
               </li>
             </ul>
             {error && (
-              <p className="text-sm text-destructive text-center">{error}</p>
+              <p className="text-xs font-[var(--font-chakra-petch)] text-destructive text-center">{error}</p>
             )}
             <Button
               className="w-full font-chakra-petch py-3"
@@ -132,7 +132,7 @@ export default function CreateWalletPage() {
         {step === 'generating' && (
           <div className="flex flex-col items-center justify-center py-12 gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Generating wallet...</p>
+            <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground">Generating wallet...</p>
           </div>
         )}
 
@@ -142,14 +142,14 @@ export default function CreateWalletPage() {
               <h1 className="font-chakra-petch text-xl font-semibold text-center">
                 Your New MySocial Wallet
               </h1>
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
                 Save your recovery phrase in a secure location.
               </p>
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-muted-foreground">Wallet Address</label>
+                <label className="text-xs font-medium font-[var(--font-chakra-petch)] text-muted-foreground">Wallet Address</label>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -168,7 +168,7 @@ export default function CreateWalletPage() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-muted-foreground">Recovery Phrase</label>
+                <label className="text-xs font-medium font-[var(--font-chakra-petch)] text-muted-foreground">Recovery Phrase</label>
                 <div className="flex gap-1">
                   <Button
                     variant="ghost"
@@ -222,7 +222,7 @@ export default function CreateWalletPage() {
             </div>
 
             {error && (
-              <p className="text-sm text-destructive text-center">{error}</p>
+              <p className="text-xs font-[var(--font-chakra-petch)] text-destructive text-center">{error}</p>
             )}
             <Button
               className="w-full font-chakra-petch py-3"
@@ -242,7 +242,7 @@ export default function CreateWalletPage() {
               )}
             </Button>
             {pendingParams === null && (
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
                 Please sign in from the app first.
               </p>
             )}
@@ -252,7 +252,7 @@ export default function CreateWalletPage() {
 
       <Link
         href="/"
-        className="mt-6 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        className="mt-6 flex items-center gap-2 text-xs font-[var(--font-chakra-petch)] text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
         Back

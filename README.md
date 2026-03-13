@@ -106,6 +106,18 @@ When `provider` is `none` or `default`, the user is redirected to the home page 
    - **popup**: `postMessage` with `{ type: 'MYSOCIAL_AUTH_ERROR', error, state, nonce?, clientId?, requestId? }`.
    - **redirect**: redirect to `redirect_uri` with `?error=...&state=...`.
 
+## Safari Popup Fallback
+
+Safari (and iOS WebKit) clears `window.opener` after OAuth redirects in popups, so the callback cannot use `postMessage` to the opener. When `mode=popup` and `window.opener` is null, the auth frontend redirects to `redirect_uri` with all auth params plus `_popup_fallback=1`. The popup then loads the consuming app's redirect_uri page (same-origin as the opener).
+
+**Consuming app requirement:** The redirect_uri page must handle `_popup_fallback=1`:
+
+1. On load, check for `_popup_fallback=1` in the URL and auth params (code, state, hash fragment).
+2. If present: broadcast the auth result via `BroadcastChannel` (name: `mysocial-auth`), then call `window.close()`.
+3. The main window must listen for `BroadcastChannel` in addition to `postMessage` and process `MYSOCIAL_AUTH_RESULT` the same way.
+
+Payload shape matches `MYSOCIAL_AUTH_RESULT`: `{ type: 'MYSOCIAL_AUTH_RESULT', code, salt?, id_token?, access_token?, session_access_token?, refresh_token?, expires_in?, user?, state, nonce, clientId, requestId? }`. Parse from query params and hash fragment.
+
 ## Wallet Auth Flow
 
 When the user chooses **Create Wallet** or **Import Wallet** from the login picker (`provider=none`):

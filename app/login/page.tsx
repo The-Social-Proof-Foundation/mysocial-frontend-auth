@@ -41,7 +41,7 @@ function LoginContent() {
         <p className="text-destructive">{error}</p>
         <a
           href="/error?reason=login_failed"
-          className="text-sm text-foreground hover:underline"
+          className="text-xs font-var(--font-space-grotesk) text-foreground hover:underline"
         >
           Go to error page
         </a>
@@ -52,7 +52,7 @@ function LoginContent() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background text-foreground">
       <LoadingSpinner className="text-foreground" />
-      <p className="text-sm text-muted-foreground">
+      <p className="text-xs font-var(--font-space-grotesk) text-muted-foreground">
         Redirecting to sign in...
       </p>
     </div>
@@ -65,7 +65,7 @@ export default function LoginPage() {
       fallback={
         <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
           <LoadingSpinner className="text-foreground" />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs font-var(--font-space-grotesk) text-muted-foreground">
             Loading...
           </p>
         </div>

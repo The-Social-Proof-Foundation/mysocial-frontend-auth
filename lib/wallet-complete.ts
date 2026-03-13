@@ -148,6 +148,7 @@ export function completeWalletAuthFlow(
       if (success.user?.address) redirectUrl.searchParams.set('address', success.user.address);
       redirectUrl.searchParams.set('state', success.state);
       redirectUrl.searchParams.set('nonce', success.nonce);
+      if (success.mode === 'popup') redirectUrl.searchParams.set('_popup_fallback', '1');
       const hashParams = new URLSearchParams();
       if (success.session_access_token) hashParams.set('session_access_token', success.session_access_token);
       if (success.refresh_token) hashParams.set('refresh_token', success.refresh_token);
@@ -169,6 +170,7 @@ export function completeWalletAuthFlow(
     }
     redirectUrl.searchParams.set('state', success.state);
     redirectUrl.searchParams.set('nonce', success.nonce);
+    if (success.mode === 'popup') redirectUrl.searchParams.set('_popup_fallback', '1');
     const hashParams = new URLSearchParams();
     if (success.access_token) hashParams.set('access_token', success.access_token);
     if (success.id_token) hashParams.set('id_token', success.id_token);

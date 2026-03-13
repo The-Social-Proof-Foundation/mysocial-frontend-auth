@@ -123,7 +123,7 @@ export default function ImportWalletPage() {
             <h1 className="font-chakra-petch text-xl font-semibold text-center">
               Import Wallet
             </h1>
-            <p className="text-sm text-muted-foreground text-center">
+            <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
               Enter your mnemonic phrase or private key to restore your wallet.
             </p>
           </div>
@@ -137,12 +137,12 @@ export default function ImportWalletPage() {
               className="min-h-[100px] font-mono text-sm"
             />
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="text-xs font-[var(--font-chakra-petch)] text-destructive">{error}</p>
             )}
           </div>
 
           {pendingParams === null && (
-            <p className="text-sm text-muted-foreground text-center">
+            <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
               Please sign in from the app first.
             </p>
           )}
@@ -168,7 +168,7 @@ export default function ImportWalletPage() {
 
       <Link
         href="/"
-        className="mt-6 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        className="mt-6 flex items-center gap-2 text-xs font-[var(--font-chakra-petch)] text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
         Back
