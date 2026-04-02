@@ -18,11 +18,13 @@ const AUTH_CALLBACK_URL = getAuthCallbackUrl();
  * app’s URL for the final MySocial code — never pass that alone to providers.
  */
 export function getProviderOAuthRedirectUri(loginRedirectUri: string): string {
-  const fromEnv = process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL?.trim();
-  if (fromEnv) return fromEnv;
+  // In dev, always follow /login’s redirect_uri (browser origin + port). Otherwise
+  // NEXT_PUBLIC_AUTH_CALLBACK_URL e.g. :3000 conflicts when Next uses :3002+.
   if (process.env.NODE_ENV === 'development') {
     return loginRedirectUri;
   }
+  const fromEnv = process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL?.trim();
+  if (fromEnv) return fromEnv;
   return getAuthCallbackUrl();
 }
 
