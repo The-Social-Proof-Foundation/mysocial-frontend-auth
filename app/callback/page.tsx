@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface CallbackSuccess {
   success: true;
@@ -219,10 +219,7 @@ function CallbackContent() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background text-foreground">
-      <LoadingSpinner className="text-foreground" />
-      <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground">
-        Completing sign in...
-      </p>
+      <LoadingSpinner tone="foreground" />
     </div>
   );
 }
@@ -232,10 +229,7 @@ export default function CallbackPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
-          <LoadingSpinner className="text-foreground" />
-          <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground">
-            Loading...
-          </p>
+          <LoadingSpinner tone="foreground" />
         </div>
       }
     >

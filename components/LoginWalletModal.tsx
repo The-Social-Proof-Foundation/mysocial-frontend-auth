@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Wallet, Download, Loader2 } from 'lucide-react';
+import { Wallet, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import {
   buildLoginUrl,
   buildLoginUrlFromParams,
@@ -18,15 +19,11 @@ import type { AuthProvider, LoginParams } from '@/lib/params';
 const PROVIDER_LABELS: Record<AuthProvider, string> = {
   google: 'Google',
   apple: 'Apple',
-  facebook: 'Facebook',
-  twitch: 'Twitch',
 };
 
 const PROVIDER_LOGOS: Record<AuthProvider, string> = {
   google: '/google.svg',
   apple: '/apple.svg',
-  facebook: '/facebook.svg',
-  twitch: '/twitch.svg',
 };
 
 export function LoginWalletModal() {
@@ -65,8 +62,8 @@ export function LoginWalletModal() {
   if (!pendingParamsLoaded) {
     return (
       <div className="flex flex-col items-center gap-0 pointer-events-auto">
-        <Image src="/logo.svg" alt="MySocial" width={74} height={74} priority />
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent mt-4" />
+        <Image src="/logo.svg" alt="MySocial" width={64} height={64} priority />
+        <LoadingSpinner className="mt-[25vh]" tone="foreground" />
       </div>
     );
   }
@@ -74,7 +71,7 @@ export function LoginWalletModal() {
   if (!pickerEnabled) {
     return (
       <div className="flex flex-col items-center gap-0 pointer-events-auto">
-        <Image src="/logo.svg" alt="MySocial" width={74} height={74} priority />
+        <Image src="/logo.svg" alt="MySocial" width={64} height={64} priority />
         <h1 className="text-muted-foreground text-base pt-4">Sign into the</h1>
         <p className="font-chakra-petch text-3xl font-medium text-foreground text-center max-w-md">
           MySocial Testnet
@@ -96,7 +93,7 @@ export function LoginWalletModal() {
         </p>
       </div>
 
-      <div className="w-full max-w-[320px] space-y-2 pt-8">
+      <div className="w-full max-w-[320px] space-y-2 pt-12">
         {configuredProviders.map((provider) => {
           const url = pendingParams
             ? buildLoginUrlFromParams(pendingParams, provider)
@@ -112,10 +109,10 @@ export function LoginWalletModal() {
               type="button"
               onClick={() => handleSocialLogin(provider)}
               disabled={!!navigating}
-              className="w-full h-11 flex items-center justify-center gap-4 rounded-md bg-black border border-white/20 border-1 text-white font-chakra-petch hover:bg-secondary hover:border-white/30 transition-colors disabled:opacity-50"
+              className="w-full h-11 flex items-center justify-center gap-4 rounded-md bg-background border border-border border-1 text-white font-chakra-petch hover:bg-button-hover hover:border-border-hover transition-colors disabled:opacity-50"
             >
               {isNavigating ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <LoadingSpinner className="h-5 w-5" tone="foreground" />
               ) : (
                 <Image
                   src={PROVIDER_LOGOS[provider]}
@@ -131,7 +128,7 @@ export function LoginWalletModal() {
         })}
       </div>
 
-      <div className="relative flex items-center w-full max-w-[320px] py-8">
+      <div className="relative flex items-center w-full max-w-[320px] py-4">
         <div className="flex-grow border-t border-white/20" />
         <span className="px-3 text-xs font-[var(--font-chakra-petch)] text-muted-foreground">Or continue with</span>
         <div className="flex-grow border-t border-white/20" />
@@ -140,7 +137,7 @@ export function LoginWalletModal() {
       <div className="w-full max-w-[320px] space-y-2">
         <Button
           variant="secondary"
-          className="w-full h-11 bg-black border border-white/20 text-white font-chakra-petch text-sm hover:bg-secondary hover:border-white/30"
+          className="w-full h-11 bg-background border border-border text-white font-chakra-petch text-sm hover:bg-button-hover hover:border-border-hover"
           asChild
         >
           <Link
@@ -156,7 +153,7 @@ export function LoginWalletModal() {
         </Button>
         <Button
           variant="ghost"
-          className="w-full h-11 font-chakra-petch text-sm text-muted-foreground hover:text-foreground hover:bg-secondary border border-white/10"
+          className="w-full h-11 font-chakra-petch text-sm text-muted-foreground hover:text-foreground hover:bg-button-hover border border-white/10"
           asChild
         >
           <Link

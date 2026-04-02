@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Copy, Eye, EyeOff, Download, Loader2, Wallet } from 'lucide-react';
+import { ArrowLeft, Copy, Eye, EyeOff, Download, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { generateNewWallet, signMessage } from '@/lib/wallet';
 import { completeWalletAuthFlow, completeWalletFlow } from '@/lib/wallet-complete';
 import { getPendingAuthParams } from '@/lib/auth-actions';
@@ -121,7 +122,7 @@ export default function CreateWalletPage() {
               <p className="text-xs font-[var(--font-chakra-petch)] text-destructive text-center">{error}</p>
             )}
             <Button
-              className="w-full font-chakra-petch py-3"
+              className="w-full font-chakra-petch py-3 bg-button-surface text-foreground border border-border hover:border-white/15"
               onClick={handleGenerate}
             >
               I Understand
@@ -131,9 +132,8 @@ export default function CreateWalletPage() {
 
         {step === 'generating' && (
           <div className="flex flex-col items-center justify-center py-12 gap-4">
-            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-            <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground">Generating wallet...</p>
-          </div>
+            <LoadingSpinner tone="muted" />
+          </div>  
         )}
 
         {step === 'final' && wallet && (
@@ -225,14 +225,13 @@ export default function CreateWalletPage() {
               <p className="text-xs font-[var(--font-chakra-petch)] text-destructive text-center">{error}</p>
             )}
             <Button
-              className="w-full font-chakra-petch py-3"
+              className="w-full font-chakra-petch py-3 bg-button-surface text-foreground border border-border hover:border-white/15"
               onClick={handleGetStarted}
               disabled={isSubmitting || pendingParams === undefined || pendingParams === null}
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  <LoadingSpinner />
                 </>
               ) : (
                 <>

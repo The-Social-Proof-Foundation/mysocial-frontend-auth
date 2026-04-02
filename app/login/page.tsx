@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { initLogin } from './actions';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 function LoginContent() {
   const searchParams = useSearchParams();
@@ -51,10 +51,7 @@ function LoginContent() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background text-foreground">
-      <LoadingSpinner className="text-foreground" />
-      <p className="text-xs font-var(--font-space-grotesk) text-muted-foreground">
-        Redirecting to sign in...
-      </p>
+      <LoadingSpinner tone="foreground" />
     </div>
   );
 }
@@ -64,10 +61,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
-          <LoadingSpinner className="text-foreground" />
-          <p className="text-xs font-var(--font-space-grotesk) text-muted-foreground">
-            Loading...
-          </p>
+          <LoadingSpinner tone="foreground" />
         </div>
       }
     >

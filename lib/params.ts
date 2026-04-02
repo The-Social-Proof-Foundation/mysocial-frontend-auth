@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
-export const oauthProviderSchema = z.enum(['google', 'apple', 'facebook', 'twitch']);
+// Facebook / Twitch disabled — re-add 'facebook', 'twitch' here when re-enabling.
+export const oauthProviderSchema = z.enum(['google', 'apple']);
 const providerParamSchema = z
-  .enum(['google', 'apple', 'facebook', 'twitch', 'none', 'default'])
+  .enum(['google', 'apple', 'none', 'default'])
   .transform((v) => (v === 'default' ? 'none' : v));
 const modeSchema = z.enum(['popup', 'redirect']);
 

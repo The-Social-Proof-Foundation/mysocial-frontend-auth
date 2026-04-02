@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 function ErrorContent() {
   const searchParams = useSearchParams();
@@ -52,7 +53,7 @@ export default function ErrorPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <LoadingSpinner tone="foreground" />
         </div>
       }
     >

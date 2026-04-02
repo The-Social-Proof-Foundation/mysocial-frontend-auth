@@ -12,11 +12,11 @@ const config: Config = {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
-  				DEFAULT: 'hsl(var(--card))',
+  				DEFAULT: 'var(--card)',
   				foreground: 'hsl(var(--card-foreground))'
   			},
   			popover: {
-  				DEFAULT: 'hsl(var(--popover))',
+  				DEFAULT: 'var(--popover)',
   				foreground: 'hsl(var(--popover-foreground))'
   			},
   			primary: {
@@ -48,7 +48,9 @@ const config: Config = {
   				'3': 'hsl(var(--chart-3))',
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
-  			}
+  			},
+  			'button-surface': 'var(--button-surface)',
+  			'button-hover': 'var(--button-hover)'
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

@@ -27,12 +27,6 @@ function getEnvClientId(provider: AuthProvider): string {
       return process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? '';
     case 'apple':
       return process.env.NEXT_PUBLIC_APPLE_CLIENT_ID ?? '';
-    case 'facebook':
-      return process.env.NEXT_PUBLIC_FACEBOOK_APP_ID ?? '';
-    case 'twitch':
-      return process.env.NEXT_PUBLIC_TWITCH_CLIENT_ID ?? '';
-    default:
-      return '';
   }
 }
 
@@ -74,35 +68,32 @@ export function getProviderConfig(provider: AuthProvider): ProviderConfig | null
         }),
       };
 
-    case 'facebook':
-      return {
-        authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-        clientId,
-        getAuthParams: ({ state }) => ({
-          client_id: clientId,
-          redirect_uri: AUTH_CALLBACK_URL,
-          response_type: 'code',
-          scope: 'email,public_profile',
-          state,
-        }),
-      };
-
-    case 'twitch':
-      return {
-        authUrl: 'https://id.twitch.tv/oauth2/authorize',
-        clientId,
-        getAuthParams: ({ state }) => ({
-          client_id: clientId,
-          redirect_uri: AUTH_CALLBACK_URL,
-          response_type: 'code',
-          scope: 'openid user:read:email',
-          state,
-          force_verify: 'true',
-        }),
-      };
-
-    default:
-      return null;
+    // case 'facebook':
+    //   return {
+    //     authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
+    //     clientId,
+    //     getAuthParams: ({ state }) => ({
+    //       client_id: clientId,
+    //       redirect_uri: AUTH_CALLBACK_URL,
+    //       response_type: 'code',
+    //       scope: 'email,public_profile',
+    //       state,
+    //     }),
+    //   };
+    //
+    // case 'twitch':
+    //   return {
+    //     authUrl: 'https://id.twitch.tv/oauth2/authorize',
+    //     clientId,
+    //     getAuthParams: ({ state }) => ({
+    //       client_id: clientId,
+    //       redirect_uri: AUTH_CALLBACK_URL,
+    //       response_type: 'code',
+    //       scope: 'openid user:read:email',
+    //       state,
+    //       force_verify: 'true',
+    //     }),
+    //   };
   }
 }
 
@@ -119,7 +110,12 @@ export function buildProviderAuthUrl(
   return `${config.authUrl}?${search.toString()}`;
 }
 
-const ALL_PROVIDERS: AuthProvider[] = ['google', 'apple', 'facebook', 'twitch'];
+const ALL_PROVIDERS: AuthProvider[] = [
+  'google',
+  'apple',
+  // 'facebook',
+  // 'twitch',
+];
 
 export function getConfiguredProviders(): AuthProvider[] {
   return ALL_PROVIDERS.filter((p) => getProviderConfig(p) !== null);
