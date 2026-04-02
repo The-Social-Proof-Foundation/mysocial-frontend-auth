@@ -65,8 +65,7 @@ export async function initLogin(params: Record<string, string>) {
   const providerUrl = buildProviderAuthUrl(
     provider,
     loginParams.state,
-    loginParams.code_challenge ?? '',
-    loginParams.redirect_uri
+    loginParams.code_challenge ?? ''
   );
 
   if (!providerUrl) {

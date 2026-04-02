@@ -109,7 +109,7 @@ export function LoginWalletModal() {
               type="button"
               onClick={() => handleSocialLogin(provider)}
               disabled={!!navigating}
-              className="w-full h-11 flex items-center justify-center gap-4 rounded-md bg-background border border-border border-1 text-white font-chakra-petch hover:bg-button-hover hover:border-border-hover transition-colors disabled:opacity-50"
+              className="w-full h-11 flex items-center justify-center gap-4 rounded-md bg-button-hover border border-border text-white font-chakra-petch hover:bg-zinc-800/90 active:bg-button-surface active:border-zinc-800 transition-colors disabled:opacity-50"
             >
               {isNavigating ? (
                 <LoadingSpinner className="h-5 w-5" tone="foreground" />
@@ -137,7 +137,7 @@ export function LoginWalletModal() {
       <div className="w-full max-w-[320px] space-y-2">
         <Button
           variant="secondary"
-          className="w-full h-11 bg-background border border-border text-white font-chakra-petch text-sm hover:bg-button-hover hover:border-border-hover"
+          className="w-full h-11 bg-button-hover border border-border text-white font-chakra-petch text-sm hover:bg-zinc-800/90 active:bg-button-surface active:border-zinc-800 shadow-none"
           asChild
         >
           <Link
