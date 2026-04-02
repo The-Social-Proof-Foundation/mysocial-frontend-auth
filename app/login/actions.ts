@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { parseLoginParams } from '@/lib/params';
 import { getAuthState, setAuthState } from '@/lib/state';
-import { buildProviderAuthUrl } from '@/lib/providers';
+import { buildProviderAuthUrl, getProviderOAuthRedirectUri } from '@/lib/providers';
 import { generatePkce } from '@/lib/pkce';
 import type { AuthProvider, LoginParams } from '@/lib/params';
 
@@ -62,11 +62,12 @@ export async function initLogin(params: Record<string, string>) {
   }
 
   const provider = loginParams.provider as AuthProvider;
+  const oauthRedirectUri = getProviderOAuthRedirectUri(loginParams.redirect_uri);
   const providerUrl = buildProviderAuthUrl(
     provider,
     loginParams.state,
     loginParams.code_challenge ?? '',
-    loginParams.redirect_uri
+    oauthRedirectUri
   );
 
   if (!providerUrl) {
