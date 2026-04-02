@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { decodeJwt } from '@socialproof/myso/zklogin';
 import { getAuthState, clearAuthState } from '@/lib/state';
 import { exchangeProviderCode } from '@/lib/api';
-import { getProviderOAuthRedirectUri } from '@/lib/providers';
 import { deriveEd25519AddressFromSubAndSalt } from '@/lib/address-derivation';
 
 export async function POST(request: NextRequest) {
@@ -69,7 +68,7 @@ export async function POST(request: NextRequest) {
       provider: authState.provider,
       code,
       code_challenge: authState.code_challenge ?? '',
-      redirect_uri: getProviderOAuthRedirectUri(authState.redirect_uri),
+      redirect_uri: authState.redirect_uri,
       client_id: authState.client_id,
       state: authState.state,
       nonce: authState.nonce,

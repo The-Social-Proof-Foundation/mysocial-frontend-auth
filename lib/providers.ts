@@ -12,22 +12,6 @@ function getAuthCallbackUrl(): string {
 
 const AUTH_CALLBACK_URL = getAuthCallbackUrl();
 
-/**
- * URL Google/Apple redirect to (this app’s `/callback`). Salt must use the same
- * value at token exchange. `loginParams.redirect_uri` is often the consuming
- * app’s URL for the final MySocial code — never pass that alone to providers.
- */
-export function getProviderOAuthRedirectUri(loginRedirectUri: string): string {
-  // In dev, always follow /login’s redirect_uri (browser origin + port). Otherwise
-  // NEXT_PUBLIC_AUTH_CALLBACK_URL e.g. :3000 conflicts when Next uses :3002+.
-  if (process.env.NODE_ENV === 'development') {
-    return loginRedirectUri;
-  }
-  const fromEnv = process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL?.trim();
-  if (fromEnv) return fromEnv;
-  return getAuthCallbackUrl();
-}
-
 export interface ProviderConfig {
   authUrl: string;
   clientId: string;
