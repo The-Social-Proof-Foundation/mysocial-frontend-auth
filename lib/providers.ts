@@ -1,13 +1,45 @@
 import type { AuthProvider } from './params';
 
+/** Match the incoming request so OAuth return hits the same origin as the session cookie. */
+function getRequestProto(headerList: { get(name: string): string | null }): string {
+  const raw = headerList.get('x-forwarded-proto');
+  if (raw) {
+    const p = raw.split(',')[0]?.trim().toLowerCase();
+    if (p === 'https' || p === 'http') return p;
+  }
+  return 'http';
+}
+
 function getAuthCallbackUrl(): string {
-  if (process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL) {
-    return process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL;
+  const explicit = process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL?.trim();
+  if (explicit) {
+    return explicit;
   }
   if (process.env.NODE_ENV === 'development') {
     return 'http://localhost:3000/callback';
   }
   return 'https://auth.testnet.mysocial.network/callback';
+}
+
+/**
+ * OAuth provider redirect_uri must match how the user reached /login (http vs https, host, port).
+ * Forcing http:// while the app runs on https:// leaves the iron-session cookie on the wrong origin.
+ */
+export function resolveAuthCallbackUrlFromHeaders(headerList: {
+  get(name: string): string | null;
+}): string {
+  const explicit = process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL?.trim();
+  if (explicit) {
+    return explicit;
+  }
+  if (process.env.NODE_ENV === 'development') {
+    const host = headerList.get('x-forwarded-host') ?? headerList.get('host');
+    if (host) {
+      const proto = getRequestProto(headerList);
+      return `${proto}://${host}/callback`;
+    }
+  }
+  return getAuthCallbackUrl();
 }
 
 const AUTH_CALLBACK_URL = getAuthCallbackUrl();

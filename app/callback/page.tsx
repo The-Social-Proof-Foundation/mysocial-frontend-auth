@@ -26,6 +26,7 @@ interface CallbackSuccess {
 interface CallbackError {
   error: string;
   message: string;
+  debug?: Record<string, unknown>;
 }
 
 function CallbackContent() {
@@ -57,6 +58,7 @@ function CallbackContent() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ code: '', state }),
+              credentials: 'include',
             });
             const data = (await res.json()) as {
               mode?: 'popup' | 'redirect';
@@ -111,6 +113,7 @@ function CallbackContent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code, state }),
+          credentials: 'include',
         });
 
         const data = (await res.json()) as CallbackSuccess | CallbackError;
@@ -125,7 +128,13 @@ function CallbackContent() {
               ? 'Unable to complete sign in. Please try again.'
               : rawMessage;
           setErrorMessage(message);
-          setErrorDetails(res.status === 500 ? rawMessage : null);
+          const details =
+            res.status === 500
+              ? rawMessage
+              : err.debug != null
+                ? JSON.stringify(err.debug, null, 2)
+                : null;
+          setErrorDetails(details);
           setStatus('error');
           return;
         }

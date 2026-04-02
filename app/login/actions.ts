@@ -1,9 +1,10 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { parseLoginParams } from '@/lib/params';
-import { getAuthState, setAuthState } from '@/lib/state';
-import { buildProviderAuthUrl } from '@/lib/providers';
+import { authDebugLog, getAuthState, setAuthState } from '@/lib/state';
+import { buildProviderAuthUrl, resolveAuthCallbackUrlFromHeaders } from '@/lib/providers';
 import { generatePkce } from '@/lib/pkce';
 import type { AuthProvider, LoginParams } from '@/lib/params';
 
@@ -62,10 +63,20 @@ export async function initLogin(params: Record<string, string>) {
   }
 
   const provider = loginParams.provider as AuthProvider;
+  const hdrs = await headers();
+  const providerRedirectUri = resolveAuthCallbackUrlFromHeaders(hdrs);
+  authDebugLog('initLogin:before-oauth-redirect', {
+    provider,
+    host: hdrs.get('host'),
+    xForwardedProto: hdrs.get('x-forwarded-proto'),
+    providerRedirectUri,
+    loginStatePrefix: loginParams.state?.slice(0, 8),
+  });
   const providerUrl = buildProviderAuthUrl(
     provider,
     loginParams.state,
-    loginParams.code_challenge ?? ''
+    loginParams.code_challenge ?? '',
+    providerRedirectUri
   );
 
   if (!providerUrl) {
@@ -75,5 +86,15 @@ export async function initLogin(params: Record<string, string>) {
   }
 
   await setAuthState(loginParams);
-  return { providerUrl };
+  authDebugLog('initLogin:redirect-to-provider', {
+    provider,
+    redirectHost: (() => {
+      try {
+        return new URL(providerUrl).host;
+      } catch {
+        return 'parse-error';
+      }
+    })(),
+  });
+  redirect(providerUrl);
 }

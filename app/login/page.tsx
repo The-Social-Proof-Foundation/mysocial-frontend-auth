@@ -2,6 +2,10 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import {
+  getURLFromRedirectError,
+  isRedirectError,
+} from 'next/dist/client/components/redirect';
 import { initLogin } from './actions';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
@@ -15,14 +19,12 @@ function LoginContent() {
     const run = async () => {
       try {
         const params = Object.fromEntries(searchParams.entries());
-        const result = await initLogin(params);
-        if (cancelled) return;
-        if (result?.providerUrl) {
-          window.location.href = result.providerUrl;
-        }
+        await initLogin(params);
       } catch (e) {
         if (cancelled) return;
-        if (e && typeof e === 'object' && 'digest' in e) {
+        if (isRedirectError(e)) {
+          const url = getURLFromRedirectError(e);
+          if (url) window.location.assign(url);
           return;
         }
         setError(e instanceof Error ? e.message : 'Failed to start login');

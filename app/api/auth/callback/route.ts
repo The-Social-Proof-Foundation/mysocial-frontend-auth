@@ -1,13 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { decodeJwt } from '@socialproof/myso/zklogin';
-import { getAuthState, clearAuthState } from '@/lib/state';
+import {
+  authDebugEnabled,
+  authDebugLog,
+  getAuthState,
+  clearAuthState,
+} from '@/lib/state';
 import { exchangeProviderCode } from '@/lib/api';
 import { deriveEd25519AddressFromSubAndSalt } from '@/lib/address-derivation';
+
+export const dynamic = 'force-dynamic';
+
+const AUTH_STATE_COOKIE = 'auth_state';
+
+function buildSessionExpiredDebug(request: NextRequest): Record<string, unknown> {
+  const auth = request.cookies.get(AUTH_STATE_COOKIE);
+  const len = auth?.value?.length ?? 0;
+  const host = request.headers.get('host');
+  const xfh = request.headers.get('x-forwarded-host');
+  const xfp = request.headers.get('x-forwarded-proto');
+  const publicHost = xfh?.split(',')[0]?.trim() || host || '';
+
+  const internalHostHint =
+    host?.includes('localhost') || host?.includes('127.0.0.1')
+      ? '`host` is often the container bind address on Railway/Docker — use `xForwardedHost` for your real URL.'
+      : null;
+
+  let hint: string;
+  if (len === 0) {
+    hint =
+      'Cookie named auth_state exists but has no value — try clearing site data for this domain and sign in again.';
+  } else {
+    hint =
+      'Cookie has data but session is empty after decrypt. Common causes: (1) AUTH_STATE_SECRET differs between the server action that set the cookie and this API route (different env on instances or redeploy changed secret), (2) stale cookie from an old secret — clear cookies or use incognito, (3) expired iron-session seal (wait > TTL).';
+  }
+
+  return {
+    authStateCookieLength: len,
+    cookieHasValue: len > 0,
+    host,
+    xForwardedHost: xfh,
+    xForwardedProto: xfp,
+    effectivePublicHost: publicHost,
+    ...(internalHostHint ? { note: internalHostHint } : {}),
+    hint,
+  };
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { code, state } = body as { code?: string; state?: string };
+
+    if (authDebugEnabled()) {
+      const cookieNames = request.cookies.getAll().map((c) => c.name);
+      authDebugLog('POST /api/auth/callback', {
+        host: request.headers.get('host'),
+        xForwardedProto: request.headers.get('x-forwarded-proto'),
+        xForwardedHost: request.headers.get('x-forwarded-host'),
+        cookieNames,
+        hasAuthStateCookie: cookieNames.includes('auth_state'),
+        hasCode: Boolean(code),
+        statePrefix: state?.slice(0, 8) ?? null,
+      });
+    }
 
     if (!state) {
       return NextResponse.json(
@@ -20,12 +76,21 @@ export async function POST(request: NextRequest) {
 
     if (!code) {
       if (!authState) {
+        authDebugLog('POST /api/auth/callback:fail', {
+          reason: 'no_session_provider_error_path',
+          statePrefix: state.slice(0, 8),
+        });
         return NextResponse.json(
           { error: 'session_expired', message: 'Auth session expired' },
           { status: 400 }
         );
       }
       if (authState.state !== state) {
+        authDebugLog('POST /api/auth/callback:fail', {
+          reason: 'state_mismatch_provider_error',
+          sessionStatePrefix: authState.state?.slice(0, 8),
+          paramStatePrefix: state.slice(0, 8),
+        });
         return NextResponse.json(
           { error: 'invalid_state', message: 'State mismatch' },
           { status: 400 }
@@ -42,13 +107,27 @@ export async function POST(request: NextRequest) {
     }
 
     if (!authState) {
+      authDebugLog('POST /api/auth/callback:fail', {
+        reason: 'no_session_success_path',
+        statePrefix: state.slice(0, 8),
+        ...buildSessionExpiredDebug(request),
+      });
       return NextResponse.json(
-        { error: 'session_expired', message: 'Auth session expired or not found' },
+        {
+          error: 'session_expired',
+          message: 'Auth session expired or not found',
+          ...(authDebugEnabled() && { debug: buildSessionExpiredDebug(request) }),
+        },
         { status: 400 }
       );
     }
 
     if (authState.state !== state) {
+      authDebugLog('POST /api/auth/callback:fail', {
+        reason: 'state_mismatch_success_path',
+        sessionStatePrefix: authState.state?.slice(0, 8),
+        paramStatePrefix: state.slice(0, 8),
+      });
       await clearAuthState();
       return NextResponse.json(
         { error: 'invalid_state', message: 'State mismatch' },
