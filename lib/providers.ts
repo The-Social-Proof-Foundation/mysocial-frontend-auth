@@ -30,7 +30,10 @@ function getEnvClientId(provider: AuthProvider): string {
   }
 }
 
-export function getProviderConfig(provider: AuthProvider): ProviderConfig | null {
+export function getProviderConfig(
+  provider: AuthProvider,
+  redirectUri: string = AUTH_CALLBACK_URL
+): ProviderConfig | null {
   const clientId = getEnvClientId(provider);
   if (!clientId) return null;
 
@@ -41,7 +44,7 @@ export function getProviderConfig(provider: AuthProvider): ProviderConfig | null
         clientId,
         getAuthParams: ({ state, codeChallenge }) => ({
           client_id: clientId,
-          redirect_uri: AUTH_CALLBACK_URL,
+          redirect_uri: redirectUri,
           response_type: 'code',
           scope: 'openid email profile',
           state,
@@ -58,7 +61,7 @@ export function getProviderConfig(provider: AuthProvider): ProviderConfig | null
         clientId,
         getAuthParams: ({ state, codeChallenge }) => ({
           client_id: clientId,
-          redirect_uri: AUTH_CALLBACK_URL,
+          redirect_uri: redirectUri,
           response_type: 'code',
           response_mode: 'query',
           scope: 'name email',
@@ -100,9 +103,10 @@ export function getProviderConfig(provider: AuthProvider): ProviderConfig | null
 export function buildProviderAuthUrl(
   provider: AuthProvider,
   state: string,
-  codeChallenge: string
+  codeChallenge: string,
+  redirectUri: string = AUTH_CALLBACK_URL
 ): string | null {
-  const config = getProviderConfig(provider);
+  const config = getProviderConfig(provider, redirectUri);
   if (!config) return null;
 
   const params = config.getAuthParams({ state, codeChallenge });
