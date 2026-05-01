@@ -81,7 +81,7 @@ https://auth.testnet.mysocial.network/login?<params>
 | Param | Description |
 |-------|-------------|
 | `client_id` | Platform ID (allowlisted on backend) |
-| `redirect_uri` | Callback URL (e.g. `https://mysocial.network/auth/callback`) |
+| `redirect_uri` | Callback URL for this auth frontend (e.g. `https://mysocial.network/callback`) |
 | `state` | CSRF token |
 | `nonce` | Replay protection |
 | `return_origin` | Origin of opener (for postMessage validation) |
