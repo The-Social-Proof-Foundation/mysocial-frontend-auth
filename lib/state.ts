@@ -3,13 +3,18 @@ import { cookies } from 'next/headers';
 import type { LoginParams } from './params';
 
 const COOKIE_NAME = 'auth_state';
+
+/** Persisted OAuth return URL on this auth service (never from client login URL params). */
+export type AuthState = LoginParams & {
+  provider_redirect_uri?: string;
+};
 const MAX_AGE = 60 * 10; // 10 minutes
 
 /** Set `AUTH_DEBUG=1` in .env to log auth diagnostics (or use dev; no secrets logged). */
 export function authDebugEnabled(): boolean {
   const v = process.env.AUTH_DEBUG?.trim().toLowerCase();
   return (
-    String(process.env.NODE_ENV ?? '') === 'localnet' ||
+    ['development', 'localnet'].includes(String(process.env.NODE_ENV ?? '')) ||
     v === '1' ||
     v === 'true' ||
     v === 'yes'
@@ -20,8 +25,6 @@ export function authDebugLog(tag: string, payload: Record<string, unknown>): voi
   if (!authDebugEnabled()) return;
   console.log(`[auth-debug] ${tag}`, payload);
 }
-
-export type AuthState = LoginParams;
 
 export interface SessionData {
   authState: AuthState | null;

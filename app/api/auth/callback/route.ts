@@ -7,6 +7,7 @@ import {
   clearAuthState,
 } from '@/lib/state';
 import { exchangeProviderCode } from '@/lib/api';
+import { canonicalProviderCallbackUrl } from '@/lib/providers';
 import { deriveEd25519AddressFromSubAndSalt } from '@/lib/address-derivation';
 
 export const dynamic = 'force-dynamic';
@@ -143,11 +144,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const rawOAuthRedirectUri =
+      authState.provider_redirect_uri?.trim() ||
+      process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL?.trim() ||
+      '';
+    const oauthRedirectUri = canonicalProviderCallbackUrl(rawOAuthRedirectUri);
+
+    if (!oauthRedirectUri) {
+      await clearAuthState();
+      return NextResponse.json(
+        {
+          error: 'configuration',
+          message:
+            'Missing OAuth callback URL in session. Clear cookies and start sign-in again.',
+        },
+        { status: 500 }
+      );
+    }
+
     const result = await exchangeProviderCode({
       provider: authState.provider,
       code,
       code_challenge: authState.code_challenge ?? '',
-      redirect_uri: authState.redirect_uri,
+      redirect_uri: oauthRedirectUri,
       client_id: authState.client_id,
       state: authState.state,
       nonce: authState.nonce,

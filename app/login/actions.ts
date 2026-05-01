@@ -85,9 +85,13 @@ export async function initLogin(params: Record<string, string>) {
     );
   }
 
-  await setAuthState(loginParams);
+  await setAuthState({
+    ...loginParams,
+    provider_redirect_uri: providerRedirectUri,
+  });
   authDebugLog('initLogin:redirect-to-provider', {
     provider,
+    providerRedirectUri,
     redirectHost: (() => {
       try {
         return new URL(providerUrl).host;
