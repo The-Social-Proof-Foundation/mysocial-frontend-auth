@@ -15,7 +15,7 @@ function getAuthCallbackUrl(): string {
   if (explicit) {
     return explicit;
   }
-  if (process.env.NODE_ENV === 'development') {
+  if (String(process.env.NODE_ENV ?? '') === 'localnet') {
     return 'http://localhost:3000/callback';
   }
   return 'https://auth.testnet.mysocial.network/callback';
@@ -32,7 +32,7 @@ export function resolveAuthCallbackUrlFromHeaders(headerList: {
   if (explicit) {
     return explicit;
   }
-  if (process.env.NODE_ENV === 'development') {
+  if (String(process.env.NODE_ENV ?? '') === 'localnet') {
     const host = headerList.get('x-forwarded-host') ?? headerList.get('host');
     if (host) {
       const proto = getRequestProto(headerList);

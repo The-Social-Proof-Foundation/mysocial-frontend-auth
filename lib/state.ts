@@ -8,7 +8,12 @@ const MAX_AGE = 60 * 10; // 10 minutes
 /** Set `AUTH_DEBUG=1` in .env to log auth diagnostics (or use dev; no secrets logged). */
 export function authDebugEnabled(): boolean {
   const v = process.env.AUTH_DEBUG?.trim().toLowerCase();
-  return process.env.NODE_ENV === 'development' || v === '1' || v === 'true' || v === 'yes';
+  return (
+    String(process.env.NODE_ENV ?? '') === 'localnet' ||
+    v === '1' ||
+    v === 'true' ||
+    v === 'yes'
+  );
 }
 
 export function authDebugLog(tag: string, payload: Record<string, unknown>): void {
@@ -31,7 +36,7 @@ function getSessionOptions() {
     password: secret,
     cookieName: COOKIE_NAME,
     cookieOptions: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: String(process.env.NODE_ENV ?? '') === 'production',
       httpOnly: true,
       maxAge: MAX_AGE,
       sameSite: 'lax' as const,

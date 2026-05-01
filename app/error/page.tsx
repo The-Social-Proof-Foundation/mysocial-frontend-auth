@@ -23,7 +23,7 @@ function ErrorContent() {
 
   const displayMessage = messages[reason] ?? messages.unknown;
   const isInvalidParams = reason === 'invalid_params';
-  const isDev = process.env.NODE_ENV === 'development';
+  const isDev = String(process.env.NODE_ENV ?? '') === 'localnet';
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-background text-foreground p-4">

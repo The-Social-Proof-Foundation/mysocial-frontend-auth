@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     if (authDebugEnabled()) {
       const cookieNames = request.cookies.getAll().map((c) => c.name);
-      authDebugLog('POST /callback', {
+      authDebugLog('POST /api/auth/callback', {
         host: request.headers.get('host'),
         xForwardedProto: request.headers.get('x-forwarded-proto'),
         xForwardedHost: request.headers.get('x-forwarded-host'),
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     if (!code) {
       if (!authState) {
-        authDebugLog('POST /callback:fail', {
+        authDebugLog('POST /api/auth/callback:fail', {
           reason: 'no_session_provider_error_path',
           statePrefix: state.slice(0, 8),
         });
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         );
       }
       if (authState.state !== state) {
-        authDebugLog('POST /callback:fail', {
+        authDebugLog('POST /api/auth/callback:fail', {
           reason: 'state_mismatch_provider_error',
           sessionStatePrefix: authState.state?.slice(0, 8),
           paramStatePrefix: state.slice(0, 8),
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!authState) {
-      authDebugLog('POST /callback:fail', {
+      authDebugLog('POST /api/auth/callback:fail', {
         reason: 'no_session_success_path',
         statePrefix: state.slice(0, 8),
         ...buildSessionExpiredDebug(request),
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (authState.state !== state) {
-      authDebugLog('POST /callback:fail', {
+      authDebugLog('POST /api/auth/callback:fail', {
         reason: 'state_mismatch_success_path',
         sessionStatePrefix: authState.state?.slice(0, 8),
         paramStatePrefix: state.slice(0, 8),
