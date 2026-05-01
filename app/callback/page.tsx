@@ -54,7 +54,7 @@ function CallbackContent() {
 
         if (state) {
           try {
-            const res = await fetch('/api/auth/callback', {
+            const res = await fetch('/callback', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ code: '', state }),
@@ -109,7 +109,7 @@ function CallbackContent() {
       }
 
       try {
-        const res = await fetch('/api/auth/callback', {
+        const res = await fetch('/callback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code, state }),
