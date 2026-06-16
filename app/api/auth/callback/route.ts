@@ -210,6 +210,43 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (user?.sub == null && result.id_token != null) {
+      try {
+        const payload = decodeJwt(result.id_token) as { sub?: string };
+        if (payload.sub) {
+          user = { ...(user ?? {}), sub: payload.sub };
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (user?.address == null && user?.sub != null && result.salt != null) {
+      try {
+        const address = await deriveEd25519AddressFromSubAndSalt(user.sub, result.salt);
+        user = { ...(user ?? {}), address };
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!user?.sub || !user?.address) {
+      console.error('[auth/callback] incomplete OAuth user after exchange', {
+        hasSub: Boolean(user?.sub),
+        hasAddress: Boolean(user?.address),
+        hasSalt: result.salt != null,
+        hasIdToken: result.id_token != null,
+      });
+      return NextResponse.json(
+        {
+          error: 'incomplete_user',
+          message:
+            'Authentication succeeded but wallet identity is incomplete. Please try signing in again.',
+        },
+        { status: 502 },
+      );
+    }
+
     return NextResponse.json({
       success: true,
       mode: authState.mode,
