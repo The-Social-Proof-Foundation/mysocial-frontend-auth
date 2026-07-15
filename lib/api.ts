@@ -24,10 +24,9 @@ export interface ProviderCallbackResponse {
   id_token?: string;
   access_token?: string;
   user?: { address?: string; sub?: string; email?: string; [key: string]: unknown };
-  /** Session tokens (returned by myso-salt-service when JWT_SIGNING_KEY configured) */
-  session_access_token?: string;
-  refresh_token?: string;
-  expires_in?: number;
+  session_access_token: string;
+  refresh_token: string;
+  expires_in: number;
 }
 
 export async function exchangeProviderCode(
@@ -55,8 +54,8 @@ export async function exchangeProviderCode(
   }
 
   const data = (await res.json()) as ProviderCallbackResponse;
-  if (!data.code) {
-    throw new Error('Invalid response: missing code');
+  if (!data.code || !data.session_access_token || !data.refresh_token || data.expires_in == null) {
+    throw new Error('Invalid response: missing required MySocial session');
   }
   return data;
 }
@@ -99,8 +98,8 @@ export async function exchangeWalletAuth(
   }
 
   const data = (await res.json()) as ProviderCallbackResponse;
-  if (!data.code) {
-    throw new Error('Invalid response: missing code');
+  if (!data.code || !data.session_access_token || !data.refresh_token || data.expires_in == null) {
+    throw new Error('Invalid response: missing required MySocial session');
   }
   return data;
 }
