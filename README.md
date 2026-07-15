@@ -1,6 +1,6 @@
 # auth.testnet.mysocial.network
 
-MySocial Auth login server. Handles OAuth with Google, Apple, Facebook, and Twitch. When accessed directly (with env config), shows a login/wallet UI. Consuming apps can open this app with a `provider` query parameter for immediate redirect to the chosen provider, or with `provider=none`/`provider=default` to show the login picker so the user can choose a method.
+MySocial Auth login server. Handles OAuth with Google and Apple. When accessed directly (with env config), shows a login/wallet UI. Consuming apps can open this app with a `provider` query parameter for immediate redirect to the chosen provider, or with `provider=none`/`provider=default` to show the login picker so the user can choose a method.
 
 ## Setup
 
@@ -29,8 +29,6 @@ cp .env.example .env.local
 | `NEXT_PUBLIC_API_BASE_URL` | Yes | Salt service URL (e.g. `https://salt.testnet.mysocial.network`) |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Yes* | Google OAuth client ID |
 | `NEXT_PUBLIC_APPLE_CLIENT_ID` | Yes* | Apple Sign In client ID |
-| `NEXT_PUBLIC_FACEBOOK_APP_ID` | Yes* | Facebook app ID |
-| `NEXT_PUBLIC_TWITCH_CLIENT_ID` | Yes* | Twitch client ID |
 | `NEXT_PUBLIC_AUTH_CALLBACK_URL` | No | Override callback URL (default: `https://auth.testnet.mysocial.network/callback`) |
 | `NEXT_PUBLIC_AUTH_CALLBACK_PATH` | No | Override backend path (default: `/auth/provider/callback`). Use if backend uses e.g. `/api/auth/provider/callback` |
 | `NEXT_PUBLIC_AUTH_WALLET_CALLBACK_PATH` | No | Override backend wallet auth path (default: `/auth/wallet/callback`) |
@@ -86,12 +84,35 @@ https://auth.testnet.mysocial.network/login?<params>
 | `nonce` | Replay protection |
 | `return_origin` | Origin of opener (for postMessage validation) |
 | `mode` | `popup` or `redirect` |
-| `provider` | `google` \| `apple` \| `facebook` \| `twitch` \| `none` \| `default` |
-| `code_challenge` | PKCE code challenge (S256) |
+| `provider` | `google` \| `apple` \| `none` \| `default` |
+| `code_challenge` | Optional platform PKCE code challenge (S256); provider PKCE is handled by MySocial |
 | `code_challenge_method` | `S256` |
 | `request_id` | (Optional) From `/auth/request` |
 
 When `provider` is `none` or `default`, the user is redirected to the home page to choose a login method (social or wallet). All other params must still be provided; they are stored and used when the user picks a provider.
+
+### Native iOS direct-provider login
+
+Use `ASWebAuthenticationSession` with the HTTPS callback registered for the native platform. The
+existing native Google and Apple buttons can bypass the hosted picker by setting `provider=google`
+or `provider=apple`; the app does not need provider SDKs or provider credentials.
+
+```text
+https://auth.testnet.mysocial.network/login
+?client_id=dripdrop-platform-id
+&redirect_uri=https%3A%2F%2Fdripdrop.social%2Fauth%2Fcallback
+&state=<cryptographically-random-state>
+&nonce=<cryptographically-random-nonce>
+&return_origin=https%3A%2F%2Fdripdrop.social
+&mode=redirect
+&provider=google
+&code_challenge_method=S256
+```
+
+The final redirect query contains `code`, `salt`, `address`, `sub`, `state`, `nonce`, `clientId`,
+and optional `email`. The fragment contains `session_access_token`, `refresh_token`, and
+`expires_in`. Native clients must validate the callback and derived wallet address before secure
+storage. They must use `sub` supplied by MySocial and must not interpret provider tokens.
 
 ## Flow
 
@@ -154,7 +175,7 @@ The backend must provide:
 ```
 POST /auth/provider/callback
 Body: {
-  provider: 'google' | 'apple' | 'facebook' | 'twitch',
+  provider: 'google' | 'apple',
   code: string,
   code_challenge: string,
   redirect_uri: string,
@@ -189,7 +210,7 @@ The backend verifies the Ed25519 signature over `message` for `address`, creates
 
 **Session endpoints:**
 
-- `POST /auth/refresh` — Body: `{ refresh_token }`. Response: `{ access_token, refresh_token, expires_in }`. 401 = session revoked; 429 = rate limited.
+- `POST /auth/refresh` — Body: `{ refresh_token }`. Response: `{ session_access_token, refresh_token, expires_in, user: { address } }`. 401 = session revoked; 429 = rate limited.
 - `POST /auth/logout` — Body: `{ refresh_token }`. Response: 204 or `{ ok: true }`.
 
 ## Salt Service

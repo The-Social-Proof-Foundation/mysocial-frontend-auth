@@ -76,6 +76,7 @@ export async function initLogin(params: Record<string, string>) {
     provider,
     loginParams.state,
     loginParams.code_challenge ?? '',
+    loginParams.nonce,
     providerRedirectUri
   );
 

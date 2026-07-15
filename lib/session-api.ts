@@ -7,9 +7,10 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://salt.testnet.mysocial.network';
 
 export interface RefreshResponse {
-  access_token: string;
+  session_access_token: string;
   refresh_token: string;
   expires_in: number;
+  user: { address: string };
 }
 
 export class SessionRevokedError extends Error {
@@ -27,7 +28,7 @@ export class SessionRateLimitedError extends Error {
 }
 
 /**
- * Refresh the session. Returns new access_token, refresh_token, expires_in.
+ * Refresh the session. Returns a rotated MySocial session and refresh token.
  * On 401: throws SessionRevokedError (clear tokens, redirect to login).
  * On 429: throws SessionRateLimitedError (retry with backoff).
  */
@@ -52,7 +53,12 @@ export async function refreshSession(refreshToken: string): Promise<RefreshRespo
   }
 
   const data = (await res.json()) as RefreshResponse;
-  if (!data.access_token || !data.refresh_token || data.expires_in == null) {
+  if (
+    !data.session_access_token ||
+    !data.refresh_token ||
+    data.expires_in == null ||
+    !data.user?.address
+  ) {
     throw new Error('Invalid refresh response: missing tokens');
   }
   return data;

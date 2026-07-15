@@ -74,6 +74,7 @@ export interface ProviderConfig {
   getAuthParams: (params: {
     state: string;
     codeChallenge: string;
+    nonce: string;
   }) => Record<string, string>;
 }
 
@@ -98,12 +99,13 @@ export function getProviderConfig(
       return {
         authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
         clientId,
-        getAuthParams: ({ state, codeChallenge }) => ({
+        getAuthParams: ({ state, codeChallenge, nonce }) => ({
           client_id: clientId,
           redirect_uri: redirectUri,
           response_type: 'code',
           scope: 'openid email profile',
           state,
+          nonce,
           code_challenge: codeChallenge,
           code_challenge_method: 'S256',
           access_type: 'offline',
@@ -115,13 +117,14 @@ export function getProviderConfig(
       return {
         authUrl: 'https://appleid.apple.com/auth/authorize',
         clientId,
-        getAuthParams: ({ state, codeChallenge }) => ({
+        getAuthParams: ({ state, codeChallenge, nonce }) => ({
           client_id: clientId,
           redirect_uri: redirectUri,
           response_type: 'code',
           response_mode: 'query',
           scope: 'name email',
           state,
+          nonce,
           code_challenge: codeChallenge,
           code_challenge_method: 'S256',
         }),
@@ -160,12 +163,13 @@ export function buildProviderAuthUrl(
   provider: AuthProvider,
   state: string,
   codeChallenge: string,
+  nonce: string,
   redirectUri: string = AUTH_CALLBACK_URL
 ): string | null {
   const config = getProviderConfig(provider, redirectUri);
   if (!config) return null;
 
-  const params = config.getAuthParams({ state, codeChallenge });
+  const params = config.getAuthParams({ state, codeChallenge, nonce });
   const search = new URLSearchParams(params);
   return `${config.authUrl}?${search.toString()}`;
 }

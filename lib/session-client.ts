@@ -62,7 +62,7 @@ export class SessionClient {
       return null;
     }
     const result = await refreshSession(this.refreshToken);
-    this.sessionAccessToken = result.access_token;
+    this.sessionAccessToken = result.session_access_token;
     this.refreshToken = result.refresh_token;
     this.expiresAt = Date.now() + result.expires_in * 1000;
     return result;
