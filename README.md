@@ -64,7 +64,25 @@ When users land on the auth frontend without URL params (e.g. typing the URL dir
 echo -n "your-43-char-minimum-verifier-string!!" | openssl dgst -binary -sha256 | base64 | tr '+/' '-_' | tr -d '='
 ```
 
-The `client_id` must match your backend allowlist (e.g. `ALLOWED_CLIENTS`).
+The `client_id` must match the merged allowlist: approved indexer platforms (`platformId` + on-chain `redirectUri`) plus `ALLOWED_CLIENTS` env overrides.
+
+### Client allowlist
+
+At login, the auth frontend validates `client_id` and `redirect_uri` against:
+
+1. **Approved platforms** from `MYSO_INDEXER_GRAPHQL_URL` (`platforms(approvedOnly: true)`), using `platformId` as `client_id` and on-chain `redirectUri` (with optional `links` fallback via `PLATFORM_LINKS_REDIRECT_KEYS`)
+2. **`ALLOWED_CLIENTS`** env JSON — merged on top; env wins on duplicate `client_id`
+
+Unapproved platforms are never accepted from GraphQL. Set `ALLOWED_CLIENTS` for auth-frontend self-callbacks, localhost dev, or emergency overrides.
+
+Example:
+
+```json
+[
+  {"client_id":"mysocial-auth-client-id","redirect_uri":"https://auth.testnet.mysocial.network/callback"},
+  {"client_id":"0x6983...","redirect_uri":"https://dripdrop.social/auth/callback"}
+]
+```
 
 ## URL Contract
 

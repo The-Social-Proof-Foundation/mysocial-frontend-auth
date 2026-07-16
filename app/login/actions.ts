@@ -3,6 +3,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { parseLoginParams } from '@/lib/params';
+import { validateAllowedClient } from '@/lib/allowed-clients';
 import { authDebugLog, getAuthState, setAuthState } from '@/lib/state';
 import { buildProviderAuthUrl, resolveAuthCallbackUrlFromHeaders } from '@/lib/providers';
 import { generatePkce } from '@/lib/pkce';
@@ -46,6 +47,14 @@ export async function initLogin(params: Record<string, string>) {
   }
 
   let loginParams = parsed.params;
+
+  const allowed = await validateAllowedClient(
+    loginParams.client_id,
+    loginParams.redirect_uri
+  );
+  if (!allowed.ok) {
+    redirect(`/error?reason=${allowed.reason}`);
+  }
 
   if (loginParams.provider === 'none') {
     const { codeVerifier, codeChallenge } = generatePkce();

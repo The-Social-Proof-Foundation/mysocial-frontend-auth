@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthState, clearAuthState } from '@/lib/state';
 import { exchangeWalletAuth } from '@/lib/api';
+import { validateAllowedClient } from '@/lib/allowed-clients';
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,6 +41,18 @@ export async function POST(request: NextRequest) {
       await clearAuthState();
       return NextResponse.json(
         { error: 'invalid_state', message: 'Wallet auth requires provider=none flow' },
+        { status: 400 }
+      );
+    }
+
+    const allowed = await validateAllowedClient(
+      authState.client_id,
+      authState.redirect_uri
+    );
+    if (!allowed.ok) {
+      await clearAuthState();
+      return NextResponse.json(
+        { error: allowed.reason, message: 'Client not allowed' },
         { status: 400 }
       );
     }
