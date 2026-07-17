@@ -64,16 +64,16 @@ When users land on the auth frontend without URL params (e.g. typing the URL dir
 echo -n "your-43-char-minimum-verifier-string!!" | openssl dgst -binary -sha256 | base64 | tr '+/' '-_' | tr -d '='
 ```
 
-The `client_id` must match the merged allowlist: approved indexer platforms (`platformId` + on-chain `redirectUri`) plus `ALLOWED_CLIENTS` env overrides.
+The `client_id` must match the allowlist: `ALLOWED_CLIENTS` env (checked first) or approved indexer platforms from GraphQL.
 
 ### Client allowlist
 
-At login, the auth frontend validates `client_id` and `redirect_uri` against:
+At login, the auth frontend validates `client_id` and `redirect_uri` in this order:
 
-1. **Approved platforms** from `MYSO_INDEXER_GRAPHQL_URL` (`platforms(approvedOnly: true)`), using `platformId` as `client_id` and on-chain `redirectUri` (with optional `links` fallback via `PLATFORM_LINKS_REDIRECT_KEYS`)
-2. **`ALLOWED_CLIENTS`** env JSON — merged on top; env wins on duplicate `client_id`
+1. **`ALLOWED_CLIENTS` env JSON** — if an entry matches both `client_id` and `redirect_uri`, login is allowed **without** calling GraphQL (env short-circuit).
+2. **GraphQL fallback** — only when env has no exact match: load approved platforms from `MYSO_INDEXER_GRAPHQL_URL` (`platforms(approvedOnly: true)`), merge with `ALLOWED_CLIENTS` (env wins on duplicate `client_id`), then validate. Uses `platformId` as `client_id` and on-chain `redirectUri` (with optional `links` fallback via `PLATFORM_LINKS_REDIRECT_KEYS`).
 
-Unapproved platforms are never accepted from GraphQL. Set `ALLOWED_CLIENTS` for auth-frontend self-callbacks, localhost dev, or emergency overrides.
+Unapproved platforms are never accepted from GraphQL. Set `ALLOWED_CLIENTS` for auth-frontend self-callbacks, localhost dev, or emergency overrides so login keeps working even if indexer GraphQL is wrong or incomplete.
 
 Example:
 

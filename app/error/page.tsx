@@ -18,6 +18,9 @@ function ErrorContent() {
     login_failed: 'Failed to start sign in',
     callback_failed: 'Failed to complete sign in',
     session_expired: 'Session expired. Please try again.',
+    unknown_client: 'This app is not allowlisted for MySocial login.',
+    redirect_uri_mismatch:
+      'Redirect URI does not match the allowlisted value for this client.',
     unknown: 'An error occurred',
   };
 

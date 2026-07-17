@@ -116,12 +116,19 @@ export function normalizeRedirectUri(uri: string): string {
   }
 }
 
+/** GraphQL `platforms` clamps limit to 100; keep page size within that so pagination advances. */
+const INDEXER_PLATFORMS_MAX_PAGE = 100;
+
 async function fetchAllowedClientsFromIndexer(): Promise<AllowedClient[]> {
   const url = process.env.MYSO_INDEXER_GRAPHQL_URL?.trim();
   if (!url) return [];
 
-  const pageLimit = Number.parseInt(process.env.INDEXER_PLATFORMS_PAGE_LIMIT ?? '200', 10);
-  const limit = Number.isFinite(pageLimit) && pageLimit > 0 ? pageLimit : 200;
+  const pageLimit = Number.parseInt(
+    process.env.INDEXER_PLATFORMS_PAGE_LIMIT ?? String(INDEXER_PLATFORMS_MAX_PAGE),
+    10
+  );
+  const requested = Number.isFinite(pageLimit) && pageLimit > 0 ? pageLimit : INDEXER_PLATFORMS_MAX_PAGE;
+  const limit = Math.min(requested, INDEXER_PLATFORMS_MAX_PAGE);
   const allowlist = parseCsvEnv('PLATFORM_STATUS_ALLOWLIST', '');
   const denylist = parseCsvEnv('PLATFORM_STATUS_DENYLIST', 'Shutdown,Sunset');
   const linkKeys = parseCsvEnv('PLATFORM_LINKS_REDIRECT_KEYS', 'website,url,oauthRedirect');
@@ -203,10 +210,24 @@ export async function getMergedAllowedClients(): Promise<AllowedClient[]> {
   return cachedClients;
 }
 
+/**
+ * Validate client_id + redirect_uri.
+ * Env ALLOWED_CLIENTS is checked first: an exact match short-circuits without GraphQL.
+ * Otherwise falls back to indexer GraphQL + env merge (env wins on duplicate client_id).
+ */
 export async function validateAllowedClient(
   clientId: string,
   redirectUri: string
 ): Promise<{ ok: true } | { ok: false; reason: 'unknown_client' | 'redirect_uri_mismatch' }> {
+  const envClients = parseAllowedClientsEnv(process.env.ALLOWED_CLIENTS);
+  const envMatch = envClients.find((client) => client.client_id === clientId);
+  if (
+    envMatch &&
+    normalizeRedirectUri(envMatch.redirect_uri) === normalizeRedirectUri(redirectUri)
+  ) {
+    return { ok: true };
+  }
+
   const allowed = await getMergedAllowedClients();
   const match = allowed.find((client) => client.client_id === clientId);
   if (!match) {
@@ -216,4 +237,9 @@ export async function validateAllowedClient(
     return { ok: false, reason: 'redirect_uri_mismatch' };
   }
   return { ok: true };
+}
+
+/** Clear in-memory allowlist cache (for tests). */
+export function clearAllowedClientsCache(): void {
+  cachedClients = null;
 }
