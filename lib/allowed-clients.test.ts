@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearAllowedClientsCache,
+  mergeAllowedClients,
   normalizeRedirectUri,
   validateAllowedClient,
 } from './allowed-clients';
 
-describe('validateAllowedClient (env-first)', () => {
+describe('validateAllowedClient (env-first + multi-URI)', () => {
   const originalFetch = globalThis.fetch;
   let fetchMock: ReturnType<typeof vi.fn>;
 
@@ -28,15 +29,41 @@ describe('validateAllowedClient (env-first)', () => {
   it('returns ok on env match without calling GraphQL', async () => {
     process.env.ALLOWED_CLIENTS = JSON.stringify([
       {
-        client_id: 'my-client',
+        client_id: 'test-client',
         redirect_uri: 'https://app.example.com/auth/callback',
       },
     ]);
     process.env.MYSO_INDEXER_GRAPHQL_URL = 'https://graphql.example.com/graphql';
 
     const result = await validateAllowedClient(
-      'my-client',
+      'test-client',
       'https://app.example.com/auth/callback/'
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('matches a second env redirect_uri for the same client_id without GraphQL', async () => {
+    process.env.ALLOWED_CLIENTS = JSON.stringify([
+      {
+        client_id: 'test-client',
+        redirect_uri: 'https://prod.example.com/auth/callback',
+      },
+      {
+        client_id: 'test-client',
+        redirect_uri: 'https://staging.example.com/auth/callback',
+      },
+      {
+        client_id: 'test-client',
+        redirect_uri: 'https://dev.example.com/auth/callback',
+      },
+    ]);
+    process.env.MYSO_INDEXER_GRAPHQL_URL = 'https://graphql.example.com/graphql';
+
+    const result = await validateAllowedClient(
+      'test-client',
+      'https://dev.example.com/auth/callback'
     );
 
     expect(result).toEqual({ ok: true });
@@ -77,10 +104,10 @@ describe('validateAllowedClient (env-first)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('falls through to GraphQL when env client_id matches but redirect_uri does not', async () => {
+  it('falls through to GraphQL when env has client_id but no matching redirect_uri', async () => {
     process.env.ALLOWED_CLIENTS = JSON.stringify([
       {
-        client_id: 'my-client',
+        client_id: 'test-client',
         redirect_uri: 'https://wrong.example.com/callback',
       },
     ]);
@@ -92,7 +119,7 @@ describe('validateAllowedClient (env-first)', () => {
         data: {
           platforms: [
             {
-              platformId: 'my-client',
+              platformId: 'test-client',
               statusText: 'Active',
               redirectUri: 'https://app.example.com/auth/callback',
               links: null,
@@ -103,12 +130,11 @@ describe('validateAllowedClient (env-first)', () => {
     });
 
     const result = await validateAllowedClient(
-      'my-client',
+      'test-client',
       'https://app.example.com/auth/callback'
     );
 
-    // Env short-circuit misses; merge still prefers env redirect for that client_id
-    expect(result).toEqual({ ok: false, reason: 'redirect_uri_mismatch' });
+    expect(result).toEqual({ ok: true });
     expect(fetchMock).toHaveBeenCalled();
   });
 
@@ -146,6 +172,23 @@ describe('validateAllowedClient (env-first)', () => {
     expect(fetchMock).toHaveBeenCalled();
   });
 
+  it('returns redirect_uri_mismatch when client exists but URI does not', async () => {
+    process.env.ALLOWED_CLIENTS = JSON.stringify([
+      {
+        client_id: 'test-client',
+        redirect_uri: 'https://allowed.example.com/callback',
+      },
+    ]);
+
+    const result = await validateAllowedClient(
+      'test-client',
+      'https://not-allowed.example.com/callback'
+    );
+
+    expect(result).toEqual({ ok: false, reason: 'redirect_uri_mismatch' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('returns unknown_client when neither env nor GraphQL match', async () => {
     process.env.MYSO_INDEXER_GRAPHQL_URL = 'https://graphql.example.com/graphql';
     fetchMock.mockResolvedValue({
@@ -165,5 +208,35 @@ describe('validateAllowedClient (env-first)', () => {
     expect(normalizeRedirectUri('https://a.example.com/cb/')).toBe(
       'https://a.example.com/cb'
     );
+  });
+
+  it('mergeAllowedClients keeps multiple redirects for the same client_id', () => {
+    const merged = mergeAllowedClients(
+      [
+        {
+          client_id: 'test-client',
+          redirect_uri: 'https://onchain.example.com/callback',
+        },
+      ],
+      [
+        {
+          client_id: 'test-client',
+          redirect_uri: 'https://dev.example.com/auth/callback',
+        },
+        {
+          client_id: 'test-client',
+          redirect_uri: 'https://staging.example.com/auth/callback',
+        },
+      ]
+    );
+
+    expect(merged).toHaveLength(3);
+    expect(
+      merged.filter((c) => c.client_id === 'test-client').map((c) => c.redirect_uri).sort()
+    ).toEqual([
+      'https://dev.example.com/auth/callback',
+      'https://onchain.example.com/callback',
+      'https://staging.example.com/auth/callback',
+    ]);
   });
 });

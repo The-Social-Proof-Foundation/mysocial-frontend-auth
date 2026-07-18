@@ -70,17 +70,20 @@ The `client_id` must match the allowlist: `ALLOWED_CLIENTS` env (checked first) 
 
 At login, the auth frontend validates `client_id` and `redirect_uri` in this order:
 
-1. **`ALLOWED_CLIENTS` env JSON** — if an entry matches both `client_id` and `redirect_uri`, login is allowed **without** calling GraphQL (env short-circuit).
-2. **GraphQL fallback** — only when env has no exact match: load approved platforms from `MYSO_INDEXER_GRAPHQL_URL` (`platforms(approvedOnly: true)`), merge with `ALLOWED_CLIENTS` (env wins on duplicate `client_id`), then validate. Uses `platformId` as `client_id` and on-chain `redirectUri` (with optional `links` fallback via `PLATFORM_LINKS_REDIRECT_KEYS`).
+1. **`ALLOWED_CLIENTS` env JSON** — if **any** entry matches both `client_id` and `redirect_uri`, login is allowed **without** calling GraphQL (env short-circuit). The same `client_id` may appear multiple times with different `redirect_uri` values (prod + localhost).
+2. **GraphQL fallback** — only when env has no exact match: load approved platforms from `MYSO_INDEXER_GRAPHQL_URL` (`platforms(approvedOnly: true)`), merge with `ALLOWED_CLIENTS` (all redirect URIs kept; keyed by `client_id` + URI), then validate. Uses `platformId` as `client_id` and on-chain `redirectUri` (with optional `links` fallback via `PLATFORM_LINKS_REDIRECT_KEYS`).
 
 Unapproved platforms are never accepted from GraphQL. Set `ALLOWED_CLIENTS` for auth-frontend self-callbacks, localhost dev, or emergency overrides so login keeps working even if indexer GraphQL is wrong or incomplete.
 
-Example:
+The consuming app’s `redirect_uri` must match an allowlisted URI **exactly** (scheme, host, port, path). Configure real first-party entries only in the auth server deploy env (`ALLOWED_CLIENTS`) — never commit production client IDs or callback URLs.
+
+Example shape (placeholders only):
 
 ```json
 [
-  {"client_id":"mysocial-auth-client-id","redirect_uri":"https://auth.testnet.mysocial.network/callback"},
-  {"client_id":"0x6983...","redirect_uri":"https://dripdrop.social/auth/callback"}
+  {"client_id":"<first-party-client-id>","redirect_uri":"https://prod.example.com/auth/callback"},
+  {"client_id":"<first-party-client-id>","redirect_uri":"https://dev.example.com/auth/callback"},
+  {"client_id":"<approved-platform-id>","redirect_uri":"https://partner.example.com/auth/callback"}
 ]
 ```
 

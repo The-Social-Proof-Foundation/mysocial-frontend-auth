@@ -50,18 +50,38 @@ export function parseAllowedClientsEnv(raw: string | undefined): AllowedClient[]
     .filter((entry) => entry.client_id && entry.redirect_uri);
 }
 
+/** Deduplicate by client_id + normalized redirect_uri (same client may have many redirects). */
 export function mergeAllowedClients(
   indexer: AllowedClient[],
   env: AllowedClient[]
 ): AllowedClient[] {
   const map = new Map<string, AllowedClient>();
+  const key = (client: AllowedClient) =>
+    `${client.client_id}\0${normalizeRedirectUri(client.redirect_uri)}`;
   for (const client of indexer) {
-    map.set(client.client_id, client);
+    map.set(key(client), client);
   }
   for (const client of env) {
-    map.set(client.client_id, client);
+    map.set(key(client), client);
   }
-  return Array.from(map.values()).sort((a, b) => a.client_id.localeCompare(b.client_id));
+  return Array.from(map.values()).sort((a, b) => {
+    const byId = a.client_id.localeCompare(b.client_id);
+    if (byId !== 0) return byId;
+    return a.redirect_uri.localeCompare(b.redirect_uri);
+  });
+}
+
+function clientAllowsRedirect(
+  clients: AllowedClient[],
+  clientId: string,
+  redirectUri: string
+): boolean {
+  const normalized = normalizeRedirectUri(redirectUri);
+  return clients.some(
+    (client) =>
+      client.client_id === clientId &&
+      normalizeRedirectUri(client.redirect_uri) === normalized
+  );
 }
 
 function platformPassesStatusFilter(
@@ -212,31 +232,27 @@ export async function getMergedAllowedClients(): Promise<AllowedClient[]> {
 
 /**
  * Validate client_id + redirect_uri.
- * Env ALLOWED_CLIENTS is checked first: an exact match short-circuits without GraphQL.
- * Otherwise falls back to indexer GraphQL + env merge (env wins on duplicate client_id).
+ * Env ALLOWED_CLIENTS is checked first: any entry matching both short-circuits without GraphQL
+ * (same client_id may list multiple redirect_uri values).
+ * Otherwise falls back to indexer GraphQL + env merge (all redirect URIs kept).
  */
 export async function validateAllowedClient(
   clientId: string,
   redirectUri: string
 ): Promise<{ ok: true } | { ok: false; reason: 'unknown_client' | 'redirect_uri_mismatch' }> {
   const envClients = parseAllowedClientsEnv(process.env.ALLOWED_CLIENTS);
-  const envMatch = envClients.find((client) => client.client_id === clientId);
-  if (
-    envMatch &&
-    normalizeRedirectUri(envMatch.redirect_uri) === normalizeRedirectUri(redirectUri)
-  ) {
+  if (clientAllowsRedirect(envClients, clientId, redirectUri)) {
     return { ok: true };
   }
 
   const allowed = await getMergedAllowedClients();
-  const match = allowed.find((client) => client.client_id === clientId);
-  if (!match) {
-    return { ok: false, reason: 'unknown_client' };
+  if (clientAllowsRedirect(allowed, clientId, redirectUri)) {
+    return { ok: true };
   }
-  if (normalizeRedirectUri(match.redirect_uri) !== normalizeRedirectUri(redirectUri)) {
+  if (allowed.some((client) => client.client_id === clientId)) {
     return { ok: false, reason: 'redirect_uri_mismatch' };
   }
-  return { ok: true };
+  return { ok: false, reason: 'unknown_client' };
 }
 
 /** Clear in-memory allowlist cache (for tests). */
