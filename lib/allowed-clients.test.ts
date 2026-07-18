@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearAllowedClientsCache,
+  collectPlatformRedirectUris,
   mergeAllowedClients,
   normalizeRedirectUri,
   validateAllowedClient,
@@ -238,5 +239,81 @@ describe('validateAllowedClient (env-first + multi-URI)', () => {
       'https://onchain.example.com/callback',
       'https://staging.example.com/auth/callback',
     ]);
+  });
+
+  it('collectPlatformRedirectUris keeps on-chain and every links key', () => {
+    const uris = collectPlatformRedirectUris(
+      'https://onchain.example.com/callback/',
+      {
+        website: 'https://www.example.com/auth/callback',
+        url: 'https://example.com/auth/callback',
+        oauthRedirect: 'http://localhost:3000/auth/callback',
+      },
+      ['website', 'url', 'oauthRedirect']
+    );
+
+    expect(uris).toEqual([
+      'https://onchain.example.com/callback/',
+      'https://www.example.com/auth/callback',
+      'https://example.com/auth/callback',
+      'http://localhost:3000/auth/callback',
+    ]);
+  });
+
+  it('collectPlatformRedirectUris dedupes by normalized URI', () => {
+    const uris = collectPlatformRedirectUris(
+      'https://app.example.com/cb',
+      {
+        website: 'https://app.example.com/cb/',
+        url: 'https://other.example.com/cb',
+      },
+      ['website', 'url']
+    );
+
+    expect(uris).toEqual([
+      'https://app.example.com/cb',
+      'https://other.example.com/cb',
+    ]);
+  });
+
+  it('allows a GraphQL link URI even when on-chain redirectUri differs', async () => {
+    process.env.MYSO_INDEXER_GRAPHQL_URL = 'https://graphql.example.com/graphql';
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          platforms: [
+            {
+              platformId: 'test-client',
+              statusText: 'Active',
+              redirectUri: 'https://messaging.example.com/auth/callback',
+              links: {
+                website: 'https://www.mysocial.network/auth/callback',
+                oauthRedirect: 'http://localhost:3000/auth/callback',
+              },
+            },
+          ],
+        },
+      }),
+    });
+
+    await expect(
+      validateAllowedClient(
+        'test-client',
+        'https://www.mysocial.network/auth/callback'
+      )
+    ).resolves.toEqual({ ok: true });
+
+    await expect(
+      validateAllowedClient('test-client', 'http://localhost:3000/auth/callback')
+    ).resolves.toEqual({ ok: true });
+
+    await expect(
+      validateAllowedClient(
+        'test-client',
+        'https://messaging.example.com/auth/callback'
+      )
+    ).resolves.toEqual({ ok: true });
   });
 });

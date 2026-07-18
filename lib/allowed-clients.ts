@@ -114,14 +114,60 @@ export function redirectUriFromLinks(
   return undefined;
 }
 
+/** All redirect URIs under configured link keys (order preserved, empties skipped). */
+export function redirectUrisFromLinks(
+  links: Record<string, unknown> | null | undefined,
+  keys: string[]
+): string[] {
+  if (!links || keys.length === 0) return [];
+  const out: string[] = [];
+  for (const key of keys) {
+    const trimmedKey = key.trim();
+    if (!trimmedKey) continue;
+    const value = links[trimmedKey];
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed) out.push(trimmed);
+    }
+  }
+  return out;
+}
+
+/**
+ * Every redirect URI found for a platform: on-chain `redirectUri` plus all
+ * non-empty values under `PLATFORM_LINKS_REDIRECT_KEYS`. Deduped by normalized URI.
+ */
+export function collectPlatformRedirectUris(
+  redirectUri: string | null | undefined,
+  links: Record<string, unknown> | null | undefined,
+  keys: string[]
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const push = (raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    const normalized = normalizeRedirectUri(trimmed);
+    if (seen.has(normalized)) return;
+    seen.add(normalized);
+    out.push(trimmed);
+  };
+
+  const onChain = redirectUri?.trim();
+  if (onChain) push(onChain);
+  for (const fromLink of redirectUrisFromLinks(links, keys)) {
+    push(fromLink);
+  }
+  return out;
+}
+
+/** First redirect URI for a platform (on-chain, else first matching links key). */
 export function resolvePlatformRedirectUri(
   redirectUri: string | null | undefined,
   links: Record<string, unknown> | null | undefined,
   keys: string[]
 ): string | undefined {
-  const onChain = redirectUri?.trim();
-  if (onChain) return onChain;
-  return redirectUriFromLinks(links, keys);
+  return collectPlatformRedirectUris(redirectUri, links, keys)[0];
 }
 
 export function normalizeRedirectUri(uri: string): string {
@@ -188,18 +234,20 @@ async function fetchAllowedClientsFromIndexer(): Promise<AllowedClient[]> {
         continue;
       }
 
-      const redirect = resolvePlatformRedirectUri(row.redirectUri, row.links, linkKeys);
-      if (requireRedirect && !redirect) {
+      const redirects = collectPlatformRedirectUris(row.redirectUri, row.links, linkKeys);
+      if (requireRedirect && redirects.length === 0) {
         continue;
       }
-      if (!redirect) {
+      if (redirects.length === 0) {
         continue;
       }
 
       const platformId = row.platformId?.trim();
       if (!platformId) continue;
 
-      out.push({ client_id: platformId, redirect_uri: redirect });
+      for (const redirect_uri of redirects) {
+        out.push({ client_id: platformId, redirect_uri });
+      }
     }
 
     if (platforms.length < limit) break;

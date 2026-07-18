@@ -71,7 +71,7 @@ The `client_id` must match the allowlist: `ALLOWED_CLIENTS` env (checked first) 
 At login, the auth frontend validates `client_id` and `redirect_uri` in this order:
 
 1. **`ALLOWED_CLIENTS` env JSON** — if **any** entry matches both `client_id` and `redirect_uri`, login is allowed **without** calling GraphQL (env short-circuit). The same `client_id` may appear multiple times with different `redirect_uri` values (prod + localhost).
-2. **GraphQL fallback** — only when env has no exact match: load approved platforms from `MYSO_INDEXER_GRAPHQL_URL` (`platforms(approvedOnly: true)`), merge with `ALLOWED_CLIENTS` (all redirect URIs kept; keyed by `client_id` + URI), then validate. Uses `platformId` as `client_id` and on-chain `redirectUri` (with optional `links` fallback via `PLATFORM_LINKS_REDIRECT_KEYS`).
+2. **GraphQL fallback** — only when env has no exact match: load approved platforms from `MYSO_INDEXER_GRAPHQL_URL` (`platforms(approvedOnly: true)`), merge with `ALLOWED_CLIENTS` (all redirect URIs kept; keyed by `client_id` + URI), then validate. Uses `platformId` as `client_id` and **every** redirect URI found for that platform: on-chain `redirectUri` **plus** all non-empty values under `PLATFORM_LINKS_REDIRECT_KEYS` (not only the first).
 
 Unapproved platforms are never accepted from GraphQL. Set `ALLOWED_CLIENTS` for auth-frontend self-callbacks, localhost dev, or emergency overrides so login keeps working even if indexer GraphQL is wrong or incomplete.
 
