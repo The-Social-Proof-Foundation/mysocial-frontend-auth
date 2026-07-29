@@ -47,6 +47,16 @@ Each provider requires:
 1. **Redirect URI**: Register `https://auth.testnet.mysocial.network/callback` (or your `NEXT_PUBLIC_AUTH_CALLBACK_URL`) in the provider's developer console.
 2. **Client ID**: Add the client ID to your `.env.local`.
 
+#### Sign in with Apple
+
+Apple authorize uses `response_mode=form_post` with `scope=name email` (Apple rejects `query` when those scopes are requested). `POST /callback` accepts the form body and redirects to `GET /callback?code&state` so the existing client exchange can run.
+
+Deploy checklist:
+
+1. **Services ID** = `NEXT_PUBLIC_APPLE_CLIENT_ID` (e.g. `TEV97DGLYR.com.mysocial.platform`).
+2. **Return URL** on that Services ID must exactly match `NEXT_PUBLIC_AUTH_CALLBACK_URL` (e.g. `https://auth.testnet.mysocial.network/callback`).
+3. **Salt service** must have Apple token-exchange secrets set: `ALLOWED_AUDIENCE_APPLE`, `APPLE_TEAM_ID`, `APPLE_KEY_IDENTIFIER`, `APPLE_PRIVATE_KEY` (this frontend does not generate Apple’s JWT `client_secret`).
+
 ### Run Locally
 
 ```bash
