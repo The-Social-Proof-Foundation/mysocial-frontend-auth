@@ -233,7 +233,7 @@ function CallbackContent() {
   );
 }
 
-export default function CallbackPage() {
+export default function CallbackContinuePage() {
   return (
     <Suspense
       fallback={

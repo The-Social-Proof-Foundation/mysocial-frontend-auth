@@ -115,7 +115,7 @@ export function getProviderConfig(
 
     case 'apple':
       // Apple requires form_post when requesting name/email scopes.
-      // POST /callback (route.ts) bridges to GET /callback?code&state for the client page.
+      // POST /callback (route.ts) bridges to /callback/continue for the client page.
       return {
         authUrl: 'https://appleid.apple.com/auth/authorize',
         clientId,

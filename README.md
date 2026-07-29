@@ -49,7 +49,7 @@ Each provider requires:
 
 #### Sign in with Apple
 
-Apple authorize uses `response_mode=form_post` with `scope=name email` (Apple rejects `query` when those scopes are requested). `POST /callback` accepts the form body and redirects to `GET /callback?code&state` so the existing client exchange can run.
+Apple authorize uses `response_mode=form_post` with `scope=name email` (Apple rejects `query` when those scopes are requested). `POST /callback` (and Google `GET /callback`) are handled by a route handler that redirects to `/callback/continue` for the client exchange UI (Next.js cannot host both `page` and `route` on the same segment).
 
 Deploy checklist:
 
