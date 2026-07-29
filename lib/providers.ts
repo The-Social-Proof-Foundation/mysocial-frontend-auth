@@ -26,6 +26,12 @@ function getRequestProto(headerList: { get(name: string): string | null }): stri
   return 'http';
 }
 
+function firstForwardedValue(raw: string | null): string | null {
+  if (!raw) return null;
+  const first = raw.split(',')[0]?.trim();
+  return first || null;
+}
+
 function getAuthCallbackUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL?.trim();
   if (explicit) {
@@ -37,6 +43,41 @@ function getAuthCallbackUrl(): string {
     return 'http://localhost:3000/callback';
   }
   return 'https://auth.testnet.mysocial.network/callback';
+}
+
+/**
+ * Public site origin for redirects (never Railway/Docker internal `localhost` from `request.url`).
+ * Prefer x-forwarded-*; fall back to NEXT_PUBLIC_AUTH_CALLBACK_URL origin.
+ */
+export function publicOriginFromHeaders(headerList: {
+  get(name: string): string | null;
+}): string {
+  const forwardedHost = firstForwardedValue(headerList.get('x-forwarded-host'));
+  if (forwardedHost) {
+    const proto = getRequestProto(headerList);
+    return `${proto}://${forwardedHost}`;
+  }
+
+  const explicit = process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL?.trim();
+  if (explicit) {
+    try {
+      return new URL(canonicalProviderCallbackUrl(explicit)).origin;
+    } catch {
+      // fall through
+    }
+  }
+
+  const host = firstForwardedValue(headerList.get('host'));
+  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+    const proto = getRequestProto(headerList);
+    return `${proto}://${host}`;
+  }
+
+  try {
+    return new URL(getAuthCallbackUrl()).origin;
+  } catch {
+    return 'https://auth.testnet.mysocial.network';
+  }
 }
 
 /**
@@ -53,7 +94,9 @@ export function resolveAuthCallbackUrlFromHeaders(headerList: {
   } else if (
     ['development', 'localnet'].includes(String(process.env.NODE_ENV ?? ''))
   ) {
-    const host = headerList.get('x-forwarded-host') ?? headerList.get('host');
+    const host =
+      firstForwardedValue(headerList.get('x-forwarded-host')) ??
+      firstForwardedValue(headerList.get('host'));
     if (host) {
       const proto = getRequestProto(headerList);
       resolved = `${proto}://${host}/callback`;

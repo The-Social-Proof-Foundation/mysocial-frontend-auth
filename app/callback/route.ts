@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { publicOriginFromHeaders } from '@/lib/providers';
 
 /**
  * OAuth providers redirect to `/callback` (registered redirect_uri).
@@ -7,9 +8,13 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * - Google: GET /callback?code&state
  * - Apple: POST /callback (form_post) with code/state
+ *
+ * Location must use the public origin (x-forwarded-* / AUTH_CALLBACK_URL).
+ * `request.url` on Railway is often http://localhost and breaks ASWebAuth.
  */
 function continueUrl(request: NextRequest, params: URLSearchParams): URL {
-  const url = new URL('/callback/continue', request.url);
+  const origin = publicOriginFromHeaders(request.headers);
+  const url = new URL('/callback/continue', origin);
   params.forEach((value, key) => {
     url.searchParams.set(key, value);
   });
