@@ -316,8 +316,8 @@ export default function ImportWalletPage() {
           </div>
         </div>
         <Button
-          variant="outline"
-          className="mt-3 w-full font-chakra-petch py-3"
+          variant="ghost"
+          className="mt-3 w-full font-chakra-petch py-3 text-muted-foreground hover:bg-transparent hover:text-foreground"
           onClick={handlePasskeySignIn}
           disabled={isImporting || pendingParams === null}
         >
