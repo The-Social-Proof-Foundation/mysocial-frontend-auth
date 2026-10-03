@@ -101,7 +101,7 @@ function CallbackContent() {
   const [status, setStatus] = useState<'loading' | 'error' | 'save-phrase'>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
-  const [pendingSuccess, setPendingSuccess] = useState<CallbackSuccess | null>(null);
+  const [pendingSuccess] = useState<CallbackSuccess | null>(null);
   const [newWallet, setNewWallet] = useState<{ address: string; mnemonic: string } | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [phraseVisible, setPhraseVisible] = useState(false);
