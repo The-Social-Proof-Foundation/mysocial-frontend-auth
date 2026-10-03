@@ -2,7 +2,15 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { Copy } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { Button } from '@/components/ui/button';
+import { generateNewWallet, signMessage } from '@/lib/wallet';
+import {
+  fetchExistingVaultAddress,
+  MNEMONIC_RECOVERY_INFO,
+  publishRootVault,
+} from '@/lib/publish-vault';
 
 interface CallbackSuccess {
   success: true;
@@ -29,11 +37,70 @@ interface CallbackError {
   debug?: Record<string, unknown>;
 }
 
+const DERIVATION_PATH = "m/44'/6976'/0'/0'/0'";
+
+function finishLogin(success: CallbackSuccess) {
+  if (success.mode === 'popup' && window.opener) {
+    window.opener.postMessage(
+      {
+        type: 'MYSOCIAL_AUTH_RESULT',
+        code: success.code,
+        ...(success.id_token != null && { id_token: success.id_token }),
+        ...(success.access_token != null && { access_token: success.access_token }),
+        ...(success.session_access_token != null && { session_access_token: success.session_access_token }),
+        ...(success.refresh_token != null && { refresh_token: success.refresh_token }),
+        ...(success.expires_in != null && { expires_in: success.expires_in }),
+        ...(success.user != null && { user: success.user }),
+        state: success.state,
+        nonce: success.nonce,
+        clientId: success.clientId,
+        requestId: success.requestId,
+      },
+      success.returnOrigin
+    );
+    window.close();
+    return;
+  }
+
+  const redirectUrl = new URL(success.redirectUri);
+  redirectUrl.searchParams.set('code', success.code);
+  if (success.user?.address) {
+    redirectUrl.searchParams.set('address', success.user.address);
+  }
+  if (success.user?.sub) {
+    redirectUrl.searchParams.set('sub', success.user.sub);
+  }
+  redirectUrl.searchParams.set('state', success.state);
+  redirectUrl.searchParams.set('nonce', success.nonce);
+  redirectUrl.searchParams.set('clientId', success.clientId);
+  if (success.requestId != null) redirectUrl.searchParams.set('requestId', success.requestId);
+  if (success.user?.email != null) redirectUrl.searchParams.set('email', success.user.email);
+  if (success.mode === 'popup') redirectUrl.searchParams.set('_popup_fallback', '1');
+  const hashParams = new URLSearchParams();
+  if (success.access_token) hashParams.set('access_token', success.access_token);
+  if (success.id_token) hashParams.set('id_token', success.id_token);
+  if (success.session_access_token) hashParams.set('session_access_token', success.session_access_token);
+  if (success.refresh_token) hashParams.set('refresh_token', success.refresh_token);
+  if (success.expires_in != null) hashParams.set('expires_in', String(success.expires_in));
+  const hash = hashParams.toString();
+  window.location.href = hash ? `${redirectUrl.toString()}#${hash}` : redirectUrl.toString();
+}
+
+function withAddress(success: CallbackSuccess, address: string): CallbackSuccess {
+  return {
+    ...success,
+    user: { ...(success.user ?? {}), address },
+  };
+}
+
 function CallbackContent() {
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState<'loading' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'error' | 'save-phrase'>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [pendingSuccess, setPendingSuccess] = useState<CallbackSuccess | null>(null);
+  const [newWallet, setNewWallet] = useState<{ address: string; mnemonic: string } | null>(null);
+  const [publishing, setPublishing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,50 +207,24 @@ function CallbackContent() {
         }
 
         const success = data as CallbackSuccess;
-
-        if (success.mode === 'popup' && window.opener) {
-          window.opener.postMessage(
-            {
-              type: 'MYSOCIAL_AUTH_RESULT',
-              code: success.code,
-        ...(success.id_token != null && { id_token: success.id_token }),
-              ...(success.access_token != null && { access_token: success.access_token }),
-              ...(success.session_access_token != null && { session_access_token: success.session_access_token }),
-              ...(success.refresh_token != null && { refresh_token: success.refresh_token }),
-              ...(success.expires_in != null && { expires_in: success.expires_in }),
-              ...(success.user != null && { user: success.user }),
-              state: success.state,
-              nonce: success.nonce,
-              clientId: success.clientId,
-              requestId: success.requestId,
-            },
-            success.returnOrigin
-          );
-          window.close();
-        } else {
-          const redirectUrl = new URL(success.redirectUri);
-          redirectUrl.searchParams.set('code', success.code);
-          if (success.user?.address) {
-            redirectUrl.searchParams.set('address', success.user.address);
-          }
-          if (success.user?.sub) {
-            redirectUrl.searchParams.set('sub', success.user.sub);
-          }
-          redirectUrl.searchParams.set('state', success.state);
-          redirectUrl.searchParams.set('nonce', success.nonce);
-          redirectUrl.searchParams.set('clientId', success.clientId);
-          if (success.requestId != null) redirectUrl.searchParams.set('requestId', success.requestId);
-          if (success.user?.email != null) redirectUrl.searchParams.set('email', success.user.email);
-          if (success.mode === 'popup') redirectUrl.searchParams.set('_popup_fallback', '1');
-          const hashParams = new URLSearchParams();
-          if (success.access_token) hashParams.set('access_token', success.access_token);
-          if (success.id_token) hashParams.set('id_token', success.id_token);
-          if (success.session_access_token) hashParams.set('session_access_token', success.session_access_token);
-          if (success.refresh_token) hashParams.set('refresh_token', success.refresh_token);
-          if (success.expires_in != null) hashParams.set('expires_in', String(success.expires_in));
-          const hash = hashParams.toString();
-          window.location.href = hash ? `${redirectUrl.toString()}#${hash}` : redirectUrl.toString();
+        if (!success.session_access_token) {
+          setErrorMessage('Could not store the encrypted wallet vault.');
+          setStatus('error');
+          return;
         }
+
+        const existingAddress = await fetchExistingVaultAddress(success.session_access_token);
+        if (cancelled) return;
+        if (existingAddress) {
+          finishLogin(withAddress(success, existingAddress));
+          return;
+        }
+
+        const wallet = await generateNewWallet();
+        if (cancelled) return;
+        setPendingSuccess(success);
+        setNewWallet(wallet);
+        setStatus('save-phrase');
       } catch {
         if (!cancelled) {
           setErrorMessage('Unable to complete sign in. Please try again.');
@@ -197,6 +238,80 @@ function CallbackContent() {
       cancelled = true;
     };
   }, [searchParams]);
+
+  const saveVaultAndFinish = async () => {
+    if (!pendingSuccess?.session_access_token || !newWallet) return;
+    setPublishing(true);
+    setErrorMessage('');
+    try {
+      await publishRootVault({
+        accessToken: pendingSuccess.session_access_token,
+        address: newWallet.address,
+        plaintext: {
+          kind: 'mnemonic',
+          mnemonic: newWallet.mnemonic,
+          derivationPath: DERIVATION_PATH,
+        },
+        recoveryPhrase: newWallet.mnemonic,
+        recoveryInfo: MNEMONIC_RECOVERY_INFO,
+        sign: (message) => signMessage(newWallet.mnemonic, message),
+      });
+      const address = newWallet.address;
+      setNewWallet(null);
+      finishLogin(withAddress(pendingSuccess, address));
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Could not store the encrypted wallet vault.');
+      setPublishing(false);
+    }
+  };
+
+  if (status === 'save-phrase' && newWallet) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-background text-foreground p-4">
+        <div className="w-full max-w-md space-y-6">
+          <div className="flex flex-col items-center gap-2">
+            <h1 className="font-chakra-petch text-2xl font-semibold text-center">
+              Save your recovery phrase
+            </h1>
+            <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
+              This phrase unlocks the wallet for this login. It is shown once.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium font-[var(--font-chakra-petch)] text-muted-foreground">Recovery Phrase</label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigator.clipboard.writeText(newWallet.mnemonic)}
+                className="h-6 px-2"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
+            <div className="p-3 bg-muted rounded-lg grid grid-cols-3 gap-2">
+              {newWallet.mnemonic.split(' ').map((word, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs">
+                  <span className="text-muted-foreground font-mono w-5 text-right">{i + 1}.</span>
+                  <span className="font-mono">{word}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {errorMessage && (
+            <p className="text-xs font-[var(--font-chakra-petch)] text-destructive text-center">{errorMessage}</p>
+          )}
+          <Button
+            className="w-full font-chakra-petch py-3 bg-button-surface text-foreground border border-border hover:border-white/15"
+            onClick={saveVaultAndFinish}
+            disabled={publishing}
+          >
+            {publishing ? <LoadingSpinner /> : 'Continue'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (status === 'error') {
     return (

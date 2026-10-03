@@ -19,6 +19,17 @@ function sessionSubject(accessToken: string): string {
   return json.sub
 }
 
+export async function fetchExistingVaultAddress(accessToken: string): Promise<string | null> {
+  const base = API_BASE.replace(/\/$/, '')
+  const response = await fetch(`${base}/wallet-vault`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error('Could not check the wallet vault.')
+  const body = (await response.json()) as { address?: string }
+  return typeof body.address === 'string' && body.address ? body.address : null
+}
+
 export async function publishRootVault(input: {
   accessToken: string
   address: string
