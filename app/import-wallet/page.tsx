@@ -16,7 +16,7 @@ import {
 } from '@/lib/wallet';
 import { completeWalletAuthFlow, completeWalletFlow } from '@/lib/wallet-complete';
 import { discoverPasskeyPrf } from '@/lib/passkey';
-import { listPasskeyVaults, readPasskeyVault, savePasskeyVault } from '@/lib/passkey-vault-store';
+import { readPasskeyVault, savePasskeyVault } from '@/lib/passkey-vault-store';
 import { WEK_INFO, openVault, unwrapWek } from '@/lib/vault-crypto';
 import { IMPORTED_RECOVERY_INFO, MNEMONIC_RECOVERY_INFO, fetchExistingVault, publishRootVault } from '@/lib/publish-vault';
 import * as bip39 from 'bip39';
@@ -163,8 +163,7 @@ export default function ImportWalletPage() {
         return;
       }
 
-      const saved = await listPasskeyVaults();
-      const passkey = await discoverPasskeyPrf(saved.map((record) => record.credentialId).filter((id): id is string => !!id));
+      const passkey = await discoverPasskeyPrf();
       if (!passkey) {
         setError('Passkey sign-in was cancelled.');
         return;

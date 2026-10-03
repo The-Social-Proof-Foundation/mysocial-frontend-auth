@@ -59,15 +59,10 @@ async function evaluatePasskeyPrf(credentialId: string): Promise<Uint8Array | nu
   }
 }
 
-/** Ask for a saved passkey. Known ids are offered first; otherwise the device picks a discoverable one. */
-export async function discoverPasskeyPrf(
-  credentialIds: string[] = [],
-): Promise<{ credentialId: string; prfOutput: Uint8Array } | null> {
+/** Ask for a saved passkey enrolled with the same relying party id. */
+export async function discoverPasskeyPrf(): Promise<{ credentialId: string; prfOutput: Uint8Array } | null> {
   if (typeof window === 'undefined' || typeof PublicKeyCredential === 'undefined') return null
   const first = await prfEvalInput()
-  const allowCredentials = credentialIds
-    .filter((id) => id.length > 0)
-    .map((id) => ({ type: 'public-key' as const, id: asBuffer(base64ToBytes(id)) }))
   try {
     const assertion = (await navigator.credentials.get({
       publicKey: {
@@ -75,7 +70,6 @@ export async function discoverPasskeyPrf(
         timeout: 60_000,
         rpId: passkeyRpId(),
         userVerification: 'required',
-        ...(allowCredentials.length > 0 ? { allowCredentials } : {}),
         extensions: { prf: { eval: { first: asBuffer(first) } } } as AuthenticationExtensionsClientInputs,
       },
     })) as PublicKeyCredential | null
@@ -104,7 +98,7 @@ export async function enrollPasskeyForVault(
           displayName: 'MySocial wallet',
         },
         pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
-        authenticatorSelection: { residentKey: 'preferred', userVerification: 'required' },
+        authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
         extensions: { prf: {} } as AuthenticationExtensionsClientInputs,
       },
     })) as PublicKeyCredential | null
