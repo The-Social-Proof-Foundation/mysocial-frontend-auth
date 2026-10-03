@@ -171,7 +171,7 @@ export default function ImportWalletPage() {
         usePasskey: false,
         passkey,
       })
-      completeWalletAuthFlow(backup.auth, exportSigningKey(backup.signKey))
+      completeWalletAuthFlow(backup.auth, exportSigningKey(backup.signKey), backup.recoveryPhrase)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not finish sign in')
     } finally {

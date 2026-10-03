@@ -101,7 +101,7 @@ export interface WalletAuthSuccess {
  * Session and public address go on the redirect URL. The signing key is included
  * only on the popup postMessage so the opener can keep it in tab memory.
  */
-export function completeWalletAuthFlow(success: WalletAuthSuccess, signingKey?: string): void {
+export function completeWalletAuthFlow(success: WalletAuthSuccess, signingKey?: string, mnemonic?: string): void {
   if (typeof window === 'undefined') return;
 
   if (success.mode === 'popup' && window.opener) {
@@ -118,6 +118,7 @@ export function completeWalletAuthFlow(success: WalletAuthSuccess, signingKey?: 
         ...(success.expires_in != null && { expires_in: success.expires_in }),
         ...(success.user != null && { user: success.user }),
         ...(signingKey ? { signingKey } : {}),
+        ...(mnemonic ? { mnemonic } : {}),
         state: success.state,
         nonce: success.nonce,
         clientId: success.clientId,
