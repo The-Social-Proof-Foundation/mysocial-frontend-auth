@@ -13,15 +13,19 @@ function passkeyRpId(): string {
   return host
 }
 
+function asBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+}
+
 export class MySocialPasskeyProvider implements PasskeyProvider {
   async create() {
     const userId = crypto.getRandomValues(new Uint8Array(10))
     const credential = await navigator.credentials.create({
       publicKey: {
-        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        challenge: asBuffer(crypto.getRandomValues(new Uint8Array(32))),
         timeout: 60_000,
         rp: { name: 'MySocial', id: passkeyRpId() },
-        user: { id: userId, name: 'MySocial', displayName: 'MySocial wallet' },
+        user: { id: asBuffer(userId), name: 'MySocial', displayName: 'MySocial wallet' },
         pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
         authenticatorSelection: {
           authenticatorAttachment: 'platform',
@@ -38,7 +42,7 @@ export class MySocialPasskeyProvider implements PasskeyProvider {
   async get(challenge: Uint8Array) {
     const credential = await navigator.credentials.get({
       publicKey: {
-        challenge,
+        challenge: asBuffer(challenge),
         timeout: 60_000,
         rpId: passkeyRpId(),
         userVerification: 'required',
