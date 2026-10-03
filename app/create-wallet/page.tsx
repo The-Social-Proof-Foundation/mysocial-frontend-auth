@@ -83,20 +83,22 @@ export default function CreateWalletPage() {
       }
 
       if (data.success && data.mode && data.returnOrigin) {
-        if (data.session_access_token) {
-          await publishRootVault({
-            accessToken: data.session_access_token,
-            address: wallet.address,
-            plaintext: {
-              kind: 'mnemonic',
-              mnemonic: wallet.mnemonic,
-              derivationPath: "m/44'/6976'/0'/0'/0'",
-            },
-            recoveryPhrase: wallet.mnemonic,
-            recoveryInfo: MNEMONIC_RECOVERY_INFO,
-            sign: (message) => signMessage(wallet.mnemonic, message),
-          })
+        if (!data.session_access_token) {
+          setError('Could not store the encrypted wallet vault.');
+          return;
         }
+        await publishRootVault({
+          accessToken: data.session_access_token,
+          address: wallet.address,
+          plaintext: {
+            kind: 'mnemonic',
+            mnemonic: wallet.mnemonic,
+            derivationPath: "m/44'/6976'/0'/0'/0'",
+          },
+          recoveryPhrase: wallet.mnemonic,
+          recoveryInfo: MNEMONIC_RECOVERY_INFO,
+          sign: (message) => signMessage(wallet.mnemonic, message),
+        })
         completeWalletAuthFlow(data);
         setWallet(null);
       } else {

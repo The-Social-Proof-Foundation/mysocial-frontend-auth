@@ -99,32 +99,34 @@ export default function ImportWalletPage() {
       }
 
       if (data.success && data.mode && data.returnOrigin) {
-        if (data.session_access_token) {
-          if (trimmed.includes(' ')) {
-            await publishRootVault({
-              accessToken: data.session_access_token,
-              address,
-              plaintext: {
-                kind: 'mnemonic',
-                mnemonic: trimmed,
-                derivationPath: "m/44'/6976'/0'/0'/0'",
-              },
-              recoveryPhrase: trimmed,
-              recoveryInfo: MNEMONIC_RECOVERY_INFO,
-              sign: (message) => signMessage(trimmed, message),
-            })
-          } else {
-            const recoveryPhrase = bip39.generateMnemonic(128)
-            await publishRootVault({
-              accessToken: data.session_access_token,
-              address,
-              plaintext: { kind: 'private-key', privateKey: trimmed },
-              recoveryPhrase,
-              recoveryInfo: IMPORTED_RECOVERY_INFO,
-              sign: (message) => signMessage(trimmed, message),
-            })
-            window.alert(`Save this recovery phrase. It unlocks the imported key:\n\n${recoveryPhrase}`)
-          }
+        if (!data.session_access_token) {
+          setError('Could not store the encrypted wallet vault.');
+          return;
+        }
+        if (trimmed.includes(' ')) {
+          await publishRootVault({
+            accessToken: data.session_access_token,
+            address,
+            plaintext: {
+              kind: 'mnemonic',
+              mnemonic: trimmed,
+              derivationPath: "m/44'/6976'/0'/0'/0'",
+            },
+            recoveryPhrase: trimmed,
+            recoveryInfo: MNEMONIC_RECOVERY_INFO,
+            sign: (message) => signMessage(trimmed, message),
+          })
+        } else {
+          const recoveryPhrase = bip39.generateMnemonic(128)
+          await publishRootVault({
+            accessToken: data.session_access_token,
+            address,
+            plaintext: { kind: 'private-key', privateKey: trimmed },
+            recoveryPhrase,
+            recoveryInfo: IMPORTED_RECOVERY_INFO,
+            sign: (message) => signMessage(trimmed, message),
+          })
+          window.alert(`Save this recovery phrase. It unlocks the imported key:\n\n${recoveryPhrase}`)
         }
         completeWalletAuthFlow(data);
       } else {
