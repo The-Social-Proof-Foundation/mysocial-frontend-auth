@@ -66,27 +66,25 @@ export default function ImportWalletPage() {
         }
       }
 
-      if (pendingParams === null) {
+      const freshParams = await getPendingAuthParams();
+      setPendingParams(freshParams);
+      if (!freshParams) {
         setError('Please sign in from the app first.');
         return;
       }
 
-      if (!pendingParams) {
-        completeWalletFlow(address, 'import');
-        return;
-      }
-
-      const message = buildChallengeMessage(pendingParams.state);
+      const message = buildChallengeMessage(freshParams.state);
       const signature = await signMessage(signKey, message);
 
       const res = await fetch('/api/auth/wallet-callback', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           address,
           message,
           signature,
-          state: pendingParams.state,
+          state: freshParams.state,
         }),
       });
 

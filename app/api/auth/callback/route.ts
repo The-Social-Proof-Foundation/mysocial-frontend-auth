@@ -3,7 +3,7 @@ import { decodeJwt } from '@socialproof/myso/zklogin';
 import {
   authDebugEnabled,
   authDebugLog,
-  getAuthState,
+  getAuthStateFromRequest,
   clearAuthState,
 } from '@/lib/state';
 import { exchangeProviderCode } from '@/lib/api';
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const authState = await getAuthState();
+    const authState = await getAuthStateFromRequest(request);
 
     if (!code) {
       if (!authState) {

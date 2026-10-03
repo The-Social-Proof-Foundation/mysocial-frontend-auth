@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthState, clearAuthState } from '@/lib/state';
+import { getAuthStateFromRequest, clearAuthState } from '@/lib/state';
 import { exchangeWalletAuth } from '@/lib/api';
 import { validateAllowedClient } from '@/lib/allowed-clients';
 
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const authState = await getAuthState();
+    const authState = await getAuthStateFromRequest(request);
 
     if (!authState) {
       return NextResponse.json(

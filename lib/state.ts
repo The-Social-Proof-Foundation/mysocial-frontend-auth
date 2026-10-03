@@ -1,5 +1,6 @@
-import { getIronSession, type IronSession } from 'iron-session';
+import { getIronSession, unsealData, type IronSession } from 'iron-session';
 import { cookies } from 'next/headers';
+import type { NextRequest } from 'next/server';
 import type { LoginParams } from './params';
 
 const COOKIE_NAME = 'auth_state';
@@ -90,6 +91,31 @@ export async function setAuthState(state: AuthState): Promise<void> {
 export async function getAuthState(): Promise<AuthState | null> {
   const session = await getAuthSession();
   return session.authState;
+}
+
+/**
+ * Route handlers should read the seal from the incoming request.
+ * `cookies()` from `next/headers` can be empty on POST even when the browser sent `auth_state`.
+ */
+export async function getAuthStateFromRequest(request: NextRequest): Promise<AuthState | null> {
+  const raw = request.cookies.get(COOKIE_NAME)?.value;
+  authDebugLog('getAuthStateFromRequest', {
+    hasRawCookie: Boolean(raw),
+    rawCookieLength: raw?.length ?? 0,
+  });
+  if (raw) {
+    try {
+      const data = await unsealData<SessionData>(raw, {
+        password: getSessionOptions().password,
+      });
+      if (data?.authState) return data.authState;
+    } catch (err) {
+      authDebugLog('getAuthStateFromRequest:unseal-failed', {
+        message: err instanceof Error ? err.message : 'unseal failed',
+      });
+    }
+  }
+  return getAuthState();
 }
 
 export async function clearAuthState(): Promise<void> {

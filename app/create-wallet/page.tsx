@@ -46,31 +46,29 @@ export default function CreateWalletPage() {
   const handleGetStarted = async () => {
     if (!wallet) return;
 
-    if (pendingParams === null) {
-      setError('Please sign in from the app first.');
-      return;
-    }
-
-    if (!pendingParams) {
-      completeWalletFlow(wallet.address, 'create');
-      return;
-    }
-
     setIsSubmitting(true);
     setError(null);
 
     try {
-      const message = buildChallengeMessage(pendingParams.state);
+      const freshParams = await getPendingAuthParams();
+      setPendingParams(freshParams);
+      if (!freshParams) {
+        setError('Please sign in from the app first.');
+        return;
+      }
+
+      const message = buildChallengeMessage(freshParams.state);
       const signature = await signMessage(wallet.mnemonic, message);
 
       const res = await fetch('/api/auth/wallet-callback', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           address: wallet.address,
           message,
           signature,
-          state: pendingParams.state,
+          state: freshParams.state,
         }),
       });
 
