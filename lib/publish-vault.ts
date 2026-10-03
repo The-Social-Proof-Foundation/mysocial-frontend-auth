@@ -8,7 +8,7 @@ import {
   type VaultPlaintext,
 } from '@/lib/vault-crypto'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://salt.testnet.mysocial.network'
+const VAULT_API = '/api/wallet-vault'
 
 function sessionSubject(accessToken: string): string {
   const payload = accessToken.split('.')[1]
@@ -20,8 +20,7 @@ function sessionSubject(accessToken: string): string {
 }
 
 export async function fetchExistingVaultAddress(accessToken: string): Promise<string | null> {
-  const base = API_BASE.replace(/\/$/, '')
-  const response = await fetch(`${base}/wallet-vault`, {
+  const response = await fetch(VAULT_API, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (response.status === 404) return null
@@ -38,12 +37,11 @@ export async function publishRootVault(input: {
   recoveryInfo: string
   sign: (message: string) => Promise<string>
 }): Promise<void> {
-  const base = API_BASE.replace(/\/$/, '')
   const headers = {
     Authorization: `Bearer ${input.accessToken}`,
     'Content-Type': 'application/json',
   }
-  const challengeRes = await fetch(`${base}/wallet-vault/challenge`, { method: 'POST', headers })
+  const challengeRes = await fetch(`${VAULT_API}/challenge`, { method: 'POST', headers })
   if (!challengeRes.ok) throw new Error('Could not start a vault upload.')
   const challenge = (await challengeRes.json()) as { nonce?: string }
   if (!challenge.nonce) throw new Error('Vault challenge was empty.')
@@ -58,7 +56,7 @@ export async function publishRootVault(input: {
   const signature = await input.sign(
     vaultPossessionMessage(sessionSubject(input.accessToken), input.address, vaultHash, challenge.nonce),
   )
-  const put = await fetch(`${base}/wallet-vault`, {
+  const put = await fetch(VAULT_API, {
     method: 'PUT',
     headers,
     body: JSON.stringify({
