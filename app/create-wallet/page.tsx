@@ -13,6 +13,7 @@ import { MNEMONIC_RECOVERY_INFO, publishRootVault } from '@/lib/publish-vault';
 import { enrollPasskeyForVault } from '@/lib/passkey';
 import { savePasskeyVault } from '@/lib/passkey-vault-store';
 import { getPendingAuthParams } from '@/lib/auth-actions';
+import { createPasskeyAccount, handoffPasskeyAccount } from '@/lib/passkey-wallet';
 import type { LoginParams } from '@/lib/params';
 
 function buildChallengeMessage(state: string): string {
@@ -32,6 +33,24 @@ export default function CreateWalletPage() {
   useEffect(() => {
     getPendingAuthParams().then(setPendingParams);
   }, []);
+
+  const handlePasskey = async () => {
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const freshParams = await getPendingAuthParams();
+      if (!freshParams) {
+        setError('Please sign in from the app first.');
+        return;
+      }
+      const keypair = await createPasskeyAccount();
+      handoffPasskeyAccount(keypair, freshParams);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Passkey was not created.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleGenerate = async () => {
     setStep('generating');
@@ -214,8 +233,17 @@ export default function CreateWalletPage() {
             <Button
               className="w-full font-chakra-petch py-3 bg-button-surface text-foreground border border-border hover:border-white/15"
               onClick={handleGenerate}
+              disabled={isSubmitting}
             >
               I Understand
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full font-chakra-petch text-muted-foreground"
+              onClick={() => void handlePasskey()}
+              disabled={isSubmitting}
+            >
+              Use a passkey instead
             </Button>
           </div>
         )}
