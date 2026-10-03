@@ -10,6 +10,8 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { exportSigningKey, generateNewWallet, signMessage } from '@/lib/wallet';
 import { completeWalletAuthFlow, completeWalletFlow } from '@/lib/wallet-complete';
 import { MNEMONIC_RECOVERY_INFO, publishRootVault } from '@/lib/publish-vault';
+import { enrollPasskeyForVault } from '@/lib/passkey';
+import { savePasskeyVault } from '@/lib/passkey-vault-store';
 import { getPendingAuthParams } from '@/lib/auth-actions';
 import type { LoginParams } from '@/lib/params';
 
@@ -20,11 +22,12 @@ function buildChallengeMessage(state: string): string {
 
 export default function CreateWalletPage() {
   const [pendingParams, setPendingParams] = useState<LoginParams | null | undefined>(undefined);
-  const [step, setStep] = useState<'warning' | 'generating' | 'final'>('warning');
+  const [step, setStep] = useState<'warning' | 'generating' | 'final' | 'backup'>('warning');
   const [wallet, setWallet] = useState<{ address: string; mnemonic: string } | null>(null);
   const [showMnemonic, setShowMnemonic] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [backupAuth, setBackupAuth] = useState<Parameters<typeof completeWalletAuthFlow>[0] | null>(null);
 
   useEffect(() => {
     getPendingAuthParams().then(setPendingParams);
@@ -85,20 +88,9 @@ export default function CreateWalletPage() {
           setError('Could not store the encrypted wallet vault.');
           return;
         }
-        await publishRootVault({
-          accessToken: data.session_access_token,
-          address: wallet.address,
-          plaintext: {
-            kind: 'mnemonic',
-            mnemonic: wallet.mnemonic,
-            derivationPath: "m/44'/6976'/0'/0'/0'",
-          },
-          recoveryPhrase: wallet.mnemonic,
-          recoveryInfo: MNEMONIC_RECOVERY_INFO,
-          sign: (message) => signMessage(wallet.mnemonic, message),
-        })
-        completeWalletAuthFlow(data, exportSigningKey(wallet.mnemonic));
-        setWallet(null);
+        setBackupAuth(data)
+        setStep('backup')
+        return
       } else {
         completeWalletFlow(wallet.address, 'create');
       }
@@ -108,6 +100,40 @@ export default function CreateWalletPage() {
       setIsSubmitting(false);
     }
   };
+
+  const finishBackup = async (usePasskey: boolean) => {
+    if (!wallet || !backupAuth?.session_access_token) return
+    setIsSubmitting(true)
+    setError(null)
+    try {
+      const passkey = usePasskey ? await enrollPasskeyForVault(wallet.address) : null
+      if (usePasskey && !passkey) {
+        setError('Passkey was not saved. Try again or skip.')
+        return
+      }
+      const record = await publishRootVault({
+        accessToken: backupAuth.session_access_token,
+        address: wallet.address,
+        plaintext: {
+          kind: 'mnemonic',
+          mnemonic: wallet.mnemonic,
+          derivationPath: "m/44'/6976'/0'/0'/0'",
+        },
+        recoveryPhrase: wallet.mnemonic,
+        recoveryInfo: MNEMONIC_RECOVERY_INFO,
+        sign: (message) => signMessage(wallet.mnemonic, message),
+        usePasskey: false,
+        passkey,
+      })
+      if (record.credentialId) await savePasskeyVault(record)
+      completeWalletAuthFlow(backupAuth, exportSigningKey(wallet.mnemonic), wallet.mnemonic)
+      setWallet(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not finish sign in')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className="relative flex min-h-screen w-screen max-w-[100vw] flex-col overflow-x-hidden bg-background">
@@ -309,6 +335,39 @@ export default function CreateWalletPage() {
                 Please sign in from the app first.
               </p>
             )}
+          </div>
+        )}
+
+        {step === 'backup' && wallet && (
+          <div className="space-y-6">
+            <div className="flex flex-col items-center gap-2">
+              <h1 className="font-chakra-petch text-2xl font-semibold text-center">
+                Back up with a passkey
+              </h1>
+              <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
+                Save a passkey on this device so you can unlock this wallet without pasting the phrase again.
+              </p>
+            </div>
+            {error && (
+              <p className="text-xs font-space-grotesk text-destructive text-center">{error}</p>
+            )}
+            <div className="flex flex-col items-center gap-3">
+              <Button
+                className="w-full font-chakra-petch py-3"
+                onClick={() => finishBackup(true)}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <LoadingSpinner /> : 'Save passkey'}
+              </Button>
+              <button
+                type="button"
+                className="font-chakra-petch text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:opacity-50"
+                onClick={() => finishBackup(false)}
+                disabled={isSubmitting}
+              >
+                Skip
+              </button>
+            </div>
           </div>
         )}
         </div>

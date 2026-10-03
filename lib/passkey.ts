@@ -59,6 +59,35 @@ async function evaluatePasskeyPrf(credentialId: string): Promise<Uint8Array | nu
   }
 }
 
+/** Ask for a saved passkey. Known ids are offered first; otherwise the device picks a discoverable one. */
+export async function discoverPasskeyPrf(
+  credentialIds: string[] = [],
+): Promise<{ credentialId: string; prfOutput: Uint8Array } | null> {
+  if (typeof window === 'undefined' || typeof PublicKeyCredential === 'undefined') return null
+  const first = await prfEvalInput()
+  const allowCredentials = credentialIds
+    .filter((id) => id.length > 0)
+    .map((id) => ({ type: 'public-key' as const, id: asBuffer(base64ToBytes(id)) }))
+  try {
+    const assertion = (await navigator.credentials.get({
+      publicKey: {
+        challenge: asBuffer(crypto.getRandomValues(new Uint8Array(32))),
+        timeout: 60_000,
+        rpId: passkeyRpId(),
+        userVerification: 'required',
+        ...(allowCredentials.length > 0 ? { allowCredentials } : {}),
+        extensions: { prf: { eval: { first: asBuffer(first) } } } as AuthenticationExtensionsClientInputs,
+      },
+    })) as PublicKeyCredential | null
+    if (!assertion) return null
+    const prfOutput = prfOutputFrom(assertion)
+    if (!prfOutput) return null
+    return { credentialId: bytesToBase64(new Uint8Array(assertion.rawId)), prfOutput }
+  } catch {
+    return null
+  }
+}
+
 /** Create a passkey whose PRF output wraps the vault key. Null when this browser cannot enroll PRF. */
 export async function enrollPasskeyForVault(
   address: string,

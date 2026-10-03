@@ -5,6 +5,7 @@ import {
   sealVault,
   sha256Hex,
   vaultPossessionMessage,
+  type EncryptedVault,
   type VaultPlaintext,
 } from '@/lib/vault-crypto'
 import { enrollPasskeyForVault } from '@/lib/passkey'
@@ -20,14 +21,34 @@ function sessionSubject(accessToken: string): string {
   return json.sub
 }
 
-export async function fetchExistingVaultAddress(accessToken: string): Promise<string | null> {
+export async function fetchExistingVault(accessToken: string): Promise<EncryptedVault | null> {
   const response = await fetch(VAULT_API, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (response.status === 404) return null
   if (!response.ok) throw new Error('Could not check the wallet vault.')
-  const body = (await response.json()) as { address?: string }
-  return typeof body.address === 'string' && body.address ? body.address : null
+  const body = (await response.json()) as Record<string, unknown>
+  const address = typeof body.address === 'string' ? body.address : ''
+  const vault = typeof body.vault === 'string' ? body.vault : ''
+  const recoveryWrappedWek = typeof body.recoveryWrappedWek === 'string' ? body.recoveryWrappedWek : ''
+  const recoveryKdfSalt = typeof body.recoveryKdfSalt === 'string' ? body.recoveryKdfSalt : ''
+  const version = typeof body.version === 'number' ? body.version : 0
+  if (!address || !vault || !recoveryWrappedWek || !recoveryKdfSalt || version < 1) return null
+  return {
+    version,
+    address,
+    credentialId: typeof body.credentialId === 'string' ? body.credentialId : null,
+    prfSalt: typeof body.prfSalt === 'string' ? body.prfSalt : null,
+    prfWrappedWek: typeof body.prfWrappedWek === 'string' ? body.prfWrappedWek : null,
+    recoveryWrappedWek,
+    recoveryKdfSalt,
+    vault,
+  }
+}
+
+export async function fetchExistingVaultAddress(accessToken: string): Promise<string | null> {
+  const record = await fetchExistingVault(accessToken)
+  return record?.address ?? null
 }
 
 export async function publishRootVault(input: {
@@ -39,7 +60,7 @@ export async function publishRootVault(input: {
   sign: (message: string) => Promise<string>
   usePasskey?: boolean
   passkey?: { credentialId: string; prfOutput: Uint8Array } | null
-}): Promise<void> {
+}): Promise<EncryptedVault> {
   const headers = {
     Authorization: `Bearer ${input.accessToken}`,
     'Content-Type': 'application/json',
@@ -84,6 +105,7 @@ export async function publishRootVault(input: {
     }),
   })
   if (!put.ok) throw new Error('Could not store the encrypted wallet vault.')
+  return record
 }
 
 export { MNEMONIC_RECOVERY_INFO, IMPORTED_RECOVERY_INFO }
