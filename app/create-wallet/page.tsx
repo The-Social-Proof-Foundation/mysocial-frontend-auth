@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Copy, Eye, EyeOff, Download, Wallet } from 'lucide-react';
+import { ArrowLeft, Copy, Eye, EyeOff, Download, Fingerprint, Wallet } from 'lucide-react';
 import { BackgroundCells } from '@/components/ui/background-ripple-effect';
 import { SparklesCore } from '@/components/ui/sparkles';
 import { Button } from '@/components/ui/button';
@@ -202,7 +202,8 @@ export default function CreateWalletPage() {
       </header>
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center p-4 pb-8 pointer-events-none">
-        <div className="w-full max-w-[420px] -translate-y-[min(14dvh,4.75rem)] sm:-translate-y-[min(16dvh,5.25rem)] rounded-lg border border-border bg-card p-6 shadow-lg pointer-events-auto">
+        <div className="w-full max-w-[420px] -translate-y-[min(14dvh,4.75rem)] sm:-translate-y-[min(16dvh,5.25rem)] pointer-events-auto">
+        <div className="rounded-lg border border-border bg-card p-6 shadow-lg">
         {step === 'warning' && (
           <div className="space-y-6">
             <div className="flex flex-col items-center gap-2">
@@ -236,14 +237,6 @@ export default function CreateWalletPage() {
               disabled={isSubmitting}
             >
               I Understand
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full font-chakra-petch text-muted-foreground"
-              onClick={() => void handlePasskey()}
-              disabled={isSubmitting}
-            >
-              Use a passkey instead
             </Button>
           </div>
         )}
@@ -397,6 +390,24 @@ export default function CreateWalletPage() {
               </button>
             </div>
           </div>
+        )}
+        </div>
+        {step === 'warning' && (
+          <Button
+            variant="ghost"
+            className="mt-3 w-full font-chakra-petch py-3 text-muted-foreground hover:bg-transparent hover:text-foreground"
+            onClick={() => void handlePasskey()}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <LoadingSpinner />
+            ) : (
+              <>
+                <Fingerprint className="mr-2 h-4 w-4" />
+                Use a passkey instead
+              </>
+            )}
+          </Button>
         )}
         </div>
       </div>
