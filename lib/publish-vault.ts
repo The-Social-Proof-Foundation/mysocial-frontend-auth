@@ -37,6 +37,8 @@ export async function publishRootVault(input: {
   recoveryPhrase: string
   recoveryInfo: string
   sign: (message: string) => Promise<string>
+  usePasskey?: boolean
+  passkey?: { credentialId: string; prfOutput: Uint8Array } | null
 }): Promise<void> {
   const headers = {
     Authorization: `Bearer ${input.accessToken}`,
@@ -47,7 +49,11 @@ export async function publishRootVault(input: {
   const challenge = (await challengeRes.json()) as { nonce?: string }
   if (!challenge.nonce) throw new Error('Vault challenge was empty.')
 
-  const passkey = await enrollPasskeyForVault(input.address)
+  const passkey = input.passkey !== undefined
+    ? input.passkey
+    : input.usePasskey === false
+      ? null
+      : await enrollPasskeyForVault(input.address)
   const { record } = await sealVault({
     address: input.address,
     plaintext: input.plaintext,

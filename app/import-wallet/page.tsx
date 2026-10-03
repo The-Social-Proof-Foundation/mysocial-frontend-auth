@@ -16,6 +16,7 @@ import {
 } from '@/lib/wallet';
 import { completeWalletAuthFlow, completeWalletFlow } from '@/lib/wallet-complete';
 import { IMPORTED_RECOVERY_INFO, MNEMONIC_RECOVERY_INFO, publishRootVault } from '@/lib/publish-vault';
+import { enrollPasskeyForVault } from '@/lib/passkey';
 import * as bip39 from 'bip39';
 import { getPendingAuthParams } from '@/lib/auth-actions';
 import type { LoginParams } from '@/lib/params';
@@ -25,11 +26,21 @@ function buildChallengeMessage(state: string): string {
   return `Login to MySocial\n${timestamp}\n${state}`;
 }
 
+type WalletBackup = {
+  accessToken: string
+  address: string
+  plaintext: { kind: 'mnemonic'; mnemonic: string; derivationPath: string }
+  recoveryPhrase: string
+  signKey: string
+  auth: Parameters<typeof completeWalletAuthFlow>[0]
+}
+
 export default function ImportWalletPage() {
   const [input, setInput] = useState('');
   const [pendingParams, setPendingParams] = useState<LoginParams | null | undefined>(undefined);
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [backup, setBackup] = useState<WalletBackup | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -103,7 +114,7 @@ export default function ImportWalletPage() {
           return;
         }
         if (trimmed.includes(' ')) {
-          await publishRootVault({
+          setBackup({
             accessToken: data.session_access_token,
             address,
             plaintext: {
@@ -112,9 +123,11 @@ export default function ImportWalletPage() {
               derivationPath: "m/44'/6976'/0'/0'/0'",
             },
             recoveryPhrase: trimmed,
-            recoveryInfo: MNEMONIC_RECOVERY_INFO,
-            sign: (message) => signMessage(trimmed, message),
+            signKey: trimmed,
+            auth: data,
           })
+          setInput('')
+          return
         } else {
           const recoveryPhrase = bip39.generateMnemonic(128)
           await publishRootVault({
@@ -137,6 +150,34 @@ export default function ImportWalletPage() {
       setIsImporting(false);
     }
   };
+
+  const finishBackup = async (usePasskey: boolean) => {
+    if (!backup) return
+    setIsImporting(true)
+    setError(null)
+    try {
+      const passkey = usePasskey ? await enrollPasskeyForVault(backup.address) : null
+      if (usePasskey && !passkey) {
+        setError('Passkey was not saved. Try again or skip.')
+        return
+      }
+      await publishRootVault({
+        accessToken: backup.accessToken,
+        address: backup.address,
+        plaintext: backup.plaintext,
+        recoveryPhrase: backup.recoveryPhrase,
+        recoveryInfo: MNEMONIC_RECOVERY_INFO,
+        sign: (message) => signMessage(backup.signKey, message),
+        usePasskey: false,
+        passkey,
+      })
+      completeWalletAuthFlow(backup.auth, exportSigningKey(backup.signKey))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not finish sign in')
+    } finally {
+      setIsImporting(false)
+    }
+  }
 
   return (
     <div className="relative flex min-h-screen w-screen max-w-[100vw] flex-col overflow-x-hidden bg-background">
@@ -188,49 +229,82 @@ export default function ImportWalletPage() {
       <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center p-4 pb-8 pointer-events-none">
         <div className="w-full max-w-[420px] -translate-y-[min(14dvh,4.75rem)] sm:-translate-y-[min(16dvh,5.25rem)] rounded-lg border border-border bg-card p-6 shadow-lg pointer-events-auto">
           <div className="space-y-6">
-            <div className="flex flex-col items-center gap-2">
-              <h1 className="font-chakra-petch text-2xl font-semibold text-center">
-                Import Wallet
-              </h1>
-              <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
-                Enter your mnemonic phrase or private key to restore your wallet.
-              </p>
-            </div>
+            {backup ? (
+              <>
+                <div className="flex flex-col items-center gap-2">
+                  <h1 className="font-chakra-petch text-2xl font-semibold text-center">
+                    Back up with a passkey
+                  </h1>
+                  <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
+                    Save a passkey on this device so you can unlock this wallet without pasting the phrase again.
+                  </p>
+                </div>
+                {error && (
+                  <p className="text-xs font-space-grotesk text-destructive text-center">{error}</p>
+                )}
+                <div className="flex flex-col items-center gap-3">
+                  <Button
+                    className="w-full font-chakra-petch py-3"
+                    onClick={() => finishBackup(true)}
+                    disabled={isImporting}
+                  >
+                    {isImporting ? <LoadingSpinner /> : 'Save passkey'}
+                  </Button>
+                  <button
+                    type="button"
+                    className="font-chakra-petch text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:opacity-50"
+                    onClick={() => finishBackup(false)}
+                    disabled={isImporting}
+                  >
+                    Skip
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col items-center gap-2">
+                  <h1 className="font-chakra-petch text-2xl font-semibold text-center">
+                    Import Wallet
+                  </h1>
+                  <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
+                    Enter your mnemonic phrase or private key to restore your wallet.
+                  </p>
+                </div>
 
-            <div className="space-y-2">
-              <Textarea
-                ref={textareaRef}
-                placeholder="Enter mnemonic phrase (12-24 words) or private key"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="min-h-[100px] font-space-grotesk text-sm transition-colors focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-white/22"
-              />
-              {error && (
-                <p className="text-xs font-space-grotesk text-destructive">{error}</p>
-              )}
-            </div>
+                <div className="space-y-2">
+                  <Textarea
+                    ref={textareaRef}
+                    placeholder="Enter mnemonic phrase (12-24 words) or private key"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    className="min-h-[100px] font-space-grotesk text-sm transition-colors focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-white/22"
+                  />
+                  {error && (
+                    <p className="text-xs font-space-grotesk text-destructive">{error}</p>
+                  )}
+                </div>
 
-            {pendingParams === null && (
-              <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
-                Please sign in from the app first.
-              </p>
+                {pendingParams === null && (
+                  <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
+                    Please sign in from the app first.
+                  </p>
+                )}
+                <Button
+                  className="w-full font-chakra-petch py-3"
+                  onClick={handleImport}
+                  disabled={isImporting || !input.trim() || pendingParams === null}
+                >
+                  {isImporting ? (
+                    <LoadingSpinner />
+                  ) : (
+                    <>
+                      <Wallet className="mr-2 h-4 w-4" />
+                      Sign Into Wallet
+                    </>
+                  )}
+                </Button>
+              </>
             )}
-            <Button
-              className="w-full font-chakra-petch py-3"
-              onClick={handleImport}
-              disabled={isImporting || !input.trim() || pendingParams === null}
-            >
-              {isImporting ? (
-                <>
-                  <LoadingSpinner />
-                </>
-              ) : (
-                <>
-                  <Wallet className="mr-2 h-4 w-4" />
-                  Sign Into Wallet
-                </>
-              )}
-            </Button>
           </div>
         </div>
       </div>
