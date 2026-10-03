@@ -3,6 +3,8 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Copy } from 'lucide-react';
+import { BackgroundCells } from '@/components/ui/background-ripple-effect';
+import { SparklesCore } from '@/components/ui/sparkles';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Button } from '@/components/ui/button';
 import { generateNewWallet, signMessage } from '@/lib/wallet';
@@ -101,6 +103,7 @@ function CallbackContent() {
   const [pendingSuccess, setPendingSuccess] = useState<CallbackSuccess | null>(null);
   const [newWallet, setNewWallet] = useState<{ address: string; mnemonic: string } | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [phraseVisible, setPhraseVisible] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -257,8 +260,29 @@ function CallbackContent() {
         sign: (message) => signMessage(newWallet.mnemonic, message),
       });
       const address = newWallet.address;
+      if (!pendingSuccess.refresh_token) {
+        throw new Error('Could not refresh the wallet session.');
+      }
+      const refreshRes = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: pendingSuccess.refresh_token }),
+      });
+      const refreshed = (await refreshRes.json()) as {
+        session_access_token?: string;
+        refresh_token?: string;
+        expires_in?: number;
+      };
+      if (!refreshRes.ok || !refreshed.session_access_token || !refreshed.refresh_token) {
+        throw new Error('Could not refresh the wallet session.');
+      }
       setNewWallet(null);
-      finishLogin(withAddress(pendingSuccess, address));
+      finishLogin(withAddress({
+        ...pendingSuccess,
+        session_access_token: refreshed.session_access_token,
+        refresh_token: refreshed.refresh_token,
+        expires_in: refreshed.expires_in ?? pendingSuccess.expires_in,
+      }, address));
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Could not store the encrypted wallet vault.');
       setPublishing(false);
@@ -267,47 +291,93 @@ function CallbackContent() {
 
   if (status === 'save-phrase' && newWallet) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-background text-foreground p-4">
-        <div className="w-full max-w-md space-y-6">
-          <div className="flex flex-col items-center gap-2">
-            <h1 className="font-chakra-petch text-2xl font-semibold text-center">
-              Save your recovery phrase
-            </h1>
-            <p className="text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
-              This phrase unlocks the wallet for this login. It is shown once.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium font-[var(--font-chakra-petch)] text-muted-foreground">Recovery Phrase</label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigator.clipboard.writeText(newWallet.mnemonic)}
-                className="h-6 px-2"
-              >
-                <Copy className="h-3 w-3" />
-              </Button>
-            </div>
-            <div className="p-3 bg-muted rounded-lg grid grid-cols-3 gap-2">
-              {newWallet.mnemonic.split(' ').map((word, i) => (
-                <div key={i} className="flex items-center gap-2 text-xs">
-                  <span className="text-muted-foreground font-mono w-5 text-right">{i + 1}.</span>
-                  <span className="font-mono">{word}</span>
+      <div className="relative flex min-h-screen w-screen max-w-[100vw] flex-col overflow-x-hidden bg-background text-foreground">
+        <div
+          className="absolute top-0 left-0 right-0 w-full h-[60vh] overflow-hidden z-0"
+          style={{
+            marginLeft: 'calc(-50vw + 50%)',
+            marginRight: 'calc(-50vw + 50%)',
+            width: '100vw',
+            overflowX: 'hidden',
+          }}
+        >
+          <BackgroundCells className="w-full h-full" />
+        </div>
+        <div
+          className="absolute inset-0 w-full h-[75vh] -translate-y-[100px] z-[1]"
+          style={{
+            pointerEvents: 'none',
+            maskImage:
+              'radial-gradient(ellipse 80% 100% at center top, white 10%, white 30%, transparent 70%)',
+            WebkitMaskImage:
+              'radial-gradient(ellipse 80% 100% at center top, white 10%, white 30%, transparent 70%)',
+          }}
+        >
+          <SparklesCore
+            background="transparent"
+            minSize={0.35}
+            maxSize={0.9}
+            particleDensity={35}
+            className="w-full h-full pt-12"
+            particleColor={['#ffffff', '#f0f9ff', '#ecfdf5', '#22c55e', '#10b981', '#059669']}
+            speed={2}
+          />
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center px-4 pt-[max(2.5rem,env(safe-area-inset-top))]">
+          <h1 className="font-chakra-petch text-2xl font-semibold text-center">
+            Save your recovery phrase
+          </h1>
+          <p className="mt-2 max-w-sm text-xs font-[var(--font-chakra-petch)] text-muted-foreground text-center">
+            This phrase unlocks the wallet for this login. It is shown once.
+          </p>
+        </div>
+
+        <div className="relative z-10 flex flex-1 flex-col items-center justify-center p-4 pb-8">
+          <div className="w-full max-w-[420px] space-y-6 rounded-lg border border-border bg-card p-6 shadow-lg">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium font-[var(--font-chakra-petch)] text-muted-foreground">Recovery Phrase</label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigator.clipboard.writeText(newWallet.mnemonic)}
+                  className="h-5 gap-1 px-1.5 text-[10px] font-[var(--font-chakra-petch)] text-muted-foreground"
+                >
+                  <Copy className="h-2.5 w-2.5" />
+                  Copy
+                </Button>
+              </div>
+              <div className="relative">
+                <div className={`p-3 bg-muted rounded-lg grid grid-cols-3 gap-2 ${phraseVisible ? '' : 'blur-sm select-none'}`}>
+                  {newWallet.mnemonic.split(' ').map((word, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs">
+                      <span className="text-muted-foreground font-mono w-5 text-right">{i + 1}.</span>
+                      <span className="font-mono">{word}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+                {!phraseVisible && (
+                  <button
+                    type="button"
+                    onClick={() => setPhraseVisible(true)}
+                    className="absolute left-1/2 top-1/2 h-16 w-28 -translate-x-1/2 -translate-y-1/2 rounded-md"
+                    aria-label="Show recovery phrase"
+                  />
+                )}
+              </div>
             </div>
+            {errorMessage && (
+              <p className="text-xs font-[var(--font-chakra-petch)] text-destructive text-center">{errorMessage}</p>
+            )}
+            <Button
+              className="w-full font-chakra-petch py-3 bg-button-surface text-foreground border border-border hover:border-white/15"
+              onClick={saveVaultAndFinish}
+              disabled={publishing}
+            >
+              {publishing ? <LoadingSpinner /> : 'Continue'}
+            </Button>
           </div>
-          {errorMessage && (
-            <p className="text-xs font-[var(--font-chakra-petch)] text-destructive text-center">{errorMessage}</p>
-          )}
-          <Button
-            className="w-full font-chakra-petch py-3 bg-button-surface text-foreground border border-border hover:border-white/15"
-            onClick={saveVaultAndFinish}
-            disabled={publishing}
-          >
-            {publishing ? <LoadingSpinner /> : 'Continue'}
-          </Button>
         </div>
       </div>
     );
