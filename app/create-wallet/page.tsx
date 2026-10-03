@@ -7,7 +7,7 @@ import { BackgroundCells } from '@/components/ui/background-ripple-effect';
 import { SparklesCore } from '@/components/ui/sparkles';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { generateNewWallet, signMessage } from '@/lib/wallet';
+import { exportSigningKey, generateNewWallet, signMessage } from '@/lib/wallet';
 import { completeWalletAuthFlow, completeWalletFlow } from '@/lib/wallet-complete';
 import { MNEMONIC_RECOVERY_INFO, publishRootVault } from '@/lib/publish-vault';
 import { getPendingAuthParams } from '@/lib/auth-actions';
@@ -97,7 +97,7 @@ export default function CreateWalletPage() {
           recoveryInfo: MNEMONIC_RECOVERY_INFO,
           sign: (message) => signMessage(wallet.mnemonic, message),
         })
-        completeWalletAuthFlow(data);
+        completeWalletAuthFlow(data, exportSigningKey(wallet.mnemonic));
         setWallet(null);
       } else {
         completeWalletFlow(wallet.address, 'create');

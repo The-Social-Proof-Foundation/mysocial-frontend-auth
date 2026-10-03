@@ -7,7 +7,7 @@ import { BackgroundCells } from '@/components/ui/background-ripple-effect';
 import { SparklesCore } from '@/components/ui/sparkles';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Button } from '@/components/ui/button';
-import { generateNewWallet, signMessage } from '@/lib/wallet';
+import { exportSigningKey, generateNewWallet, signMessage } from '@/lib/wallet';
 import {
   fetchExistingVaultAddress,
   MNEMONIC_RECOVERY_INFO,
@@ -41,7 +41,7 @@ interface CallbackError {
 
 const DERIVATION_PATH = "m/44'/6976'/0'/0'/0'";
 
-function finishLogin(success: CallbackSuccess) {
+function finishLogin(success: CallbackSuccess, signingKey?: string) {
   if (success.mode === 'popup' && window.opener) {
     window.opener.postMessage(
       {
@@ -53,6 +53,7 @@ function finishLogin(success: CallbackSuccess) {
         ...(success.refresh_token != null && { refresh_token: success.refresh_token }),
         ...(success.expires_in != null && { expires_in: success.expires_in }),
         ...(success.user != null && { user: success.user }),
+        ...(signingKey ? { signingKey } : {}),
         state: success.state,
         nonce: success.nonce,
         clientId: success.clientId,
@@ -276,13 +277,14 @@ function CallbackContent() {
       if (!refreshRes.ok || !refreshed.session_access_token || !refreshed.refresh_token) {
         throw new Error('Could not refresh the wallet session.');
       }
+      const signingKey = exportSigningKey(newWallet.mnemonic);
       setNewWallet(null);
       finishLogin(withAddress({
         ...pendingSuccess,
         session_access_token: refreshed.session_access_token,
         refresh_token: refreshed.refresh_token,
         expires_in: refreshed.expires_in ?? pendingSuccess.expires_in,
-      }, address));
+      }, address), signingKey);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Could not store the encrypted wallet vault.');
       setPublishing(false);

@@ -43,26 +43,12 @@ export async function importWalletFromMnemonic(mnemonic: string): Promise<string
 }
 
 export async function importWalletFromPrivateKey(privateKey: string): Promise<string> {
-  let keyBytes: Uint8Array;
+  const keypair = Ed25519Keypair.fromSecretKey(secretKeyBytes(privateKey));
+  return keypair.getPublicKey().toMySoAddress();
+}
 
-  if (privateKey.startsWith('0x')) {
-    const hex = privateKey.slice(2);
-    if (hex.length !== 64) {
-      throw new Error('Invalid private key: hex key must be 64 characters (32 bytes)');
-    }
-    keyBytes = new Uint8Array(hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
-  } else {
-    const keyArray = privateKey.split(',').map(Number);
-    if (keyArray.length !== 32) {
-      throw new Error('Invalid private key: must be 32 bytes');
-    }
-    keyBytes = new Uint8Array(keyArray);
-  }
-
-  const keypair = Ed25519Keypair.fromSecretKey(keyBytes);
-  const address = keypair.getPublicKey().toMySoAddress();
-
-  return address;
+async function getKeypairFromPrivateKey(privateKey: string): Promise<Ed25519Keypair> {
+  return Ed25519Keypair.fromSecretKey(secretKeyBytes(privateKey));
 }
 
 export function getAppRedirectUri(): string {
@@ -77,6 +63,14 @@ export function getAppRedirectUri(): string {
  * Returns base64-encoded Ed25519 SimpleSignature (97 bytes: 0x00 + 64-byte sig + 32-byte pubkey)
  * to match myso-salt-service auth_wallet_callback expectations.
  */
+export function exportSigningKey(mnemonicOrPrivateKey: string): string {
+  const trimmed = mnemonicOrPrivateKey.trim();
+  const keypair = trimmed.includes(' ')
+    ? Ed25519Keypair.deriveKeypair(trimmed, DERIVATION_PATH)
+    : Ed25519Keypair.fromSecretKey(secretKeyBytes(trimmed));
+  return keypair.getSecretKey();
+}
+
 export async function signMessage(
   mnemonicOrPrivateKey: string,
   message: string
@@ -106,24 +100,19 @@ export async function signMessage(
   return uint8ArrayToBase64(simpleSig);
 }
 
-async function getKeypairFromPrivateKey(privateKey: string): Promise<Ed25519Keypair> {
-  let keyBytes: Uint8Array;
-
+function secretKeyBytes(privateKey: string): Uint8Array {
   if (privateKey.startsWith('0x')) {
     const hex = privateKey.slice(2);
     if (hex.length !== 64) {
       throw new Error('Invalid private key: hex key must be 64 characters (32 bytes)');
     }
-    keyBytes = new Uint8Array(hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
-  } else {
-    const keyArray = privateKey.split(',').map(Number);
-    if (keyArray.length !== 32) {
-      throw new Error('Invalid private key: must be 32 bytes');
-    }
-    keyBytes = new Uint8Array(keyArray);
+    return new Uint8Array(hex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
   }
-
-  return Ed25519Keypair.fromSecretKey(keyBytes);
+  const keyArray = privateKey.split(',').map(Number);
+  if (keyArray.length !== 32) {
+    throw new Error('Invalid private key: must be 32 bytes');
+  }
+  return new Uint8Array(keyArray);
 }
 
 function uint8ArrayToBase64(bytes: Uint8Array): string {

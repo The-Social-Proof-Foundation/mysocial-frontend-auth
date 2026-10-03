@@ -98,10 +98,10 @@ export interface WalletAuthSuccess {
 /**
  * Complete the wallet auth flow with session tokens (same as OAuth callback).
  * postMessage MYSOCIAL_AUTH_RESULT and dismiss popup, or redirect with hash fragment.
- * Session and public address only. The mnemonic and private key stay in the page
- * that sealed the vault and are never placed on the message or the redirect URL.
+ * Session and public address go on the redirect URL. The signing key is included
+ * only on the popup postMessage so the opener can keep it in tab memory.
  */
-export function completeWalletAuthFlow(success: WalletAuthSuccess): void {
+export function completeWalletAuthFlow(success: WalletAuthSuccess, signingKey?: string): void {
   if (typeof window === 'undefined') return;
 
   if (success.mode === 'popup' && window.opener) {
@@ -117,6 +117,7 @@ export function completeWalletAuthFlow(success: WalletAuthSuccess): void {
         ...(success.refresh_token != null && { refresh_token: success.refresh_token }),
         ...(success.expires_in != null && { expires_in: success.expires_in }),
         ...(success.user != null && { user: success.user }),
+        ...(signingKey ? { signingKey } : {}),
         state: success.state,
         nonce: success.nonce,
         clientId: success.clientId,

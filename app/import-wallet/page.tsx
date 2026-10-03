@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  exportSigningKey,
   importWalletFromMnemonic,
   importWalletFromPrivateKey,
   signMessage,
@@ -126,7 +127,7 @@ export default function ImportWalletPage() {
           })
           window.alert(`Save this recovery phrase. It unlocks the imported key:\n\n${recoveryPhrase}`)
         }
-        completeWalletAuthFlow(data);
+        completeWalletAuthFlow(data, exportSigningKey(trimmed));
       } else {
         completeWalletFlow(address, 'import');
       }
