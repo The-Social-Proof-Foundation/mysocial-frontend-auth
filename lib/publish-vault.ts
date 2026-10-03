@@ -7,6 +7,7 @@ import {
   vaultPossessionMessage,
   type VaultPlaintext,
 } from '@/lib/vault-crypto'
+import { enrollPasskeyForVault } from '@/lib/passkey'
 
 const VAULT_API = '/api/wallet-vault'
 
@@ -46,12 +47,16 @@ export async function publishRootVault(input: {
   const challenge = (await challengeRes.json()) as { nonce?: string }
   if (!challenge.nonce) throw new Error('Vault challenge was empty.')
 
+  const passkey = await enrollPasskeyForVault(input.address)
   const { record } = await sealVault({
     address: input.address,
     plaintext: input.plaintext,
     recoveryIkm: recoveryIkmForPhrase(input.recoveryPhrase),
     recoveryInfo: input.recoveryInfo,
+    prfOutput: passkey?.prfOutput ?? null,
+    credentialId: passkey?.credentialId ?? null,
   })
+  passkey?.prfOutput.fill(0)
   const vaultHash = await sha256Hex(record.vault)
   const signature = await input.sign(
     vaultPossessionMessage(sessionSubject(input.accessToken), input.address, vaultHash, challenge.nonce),

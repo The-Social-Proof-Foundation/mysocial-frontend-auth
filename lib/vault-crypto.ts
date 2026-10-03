@@ -5,6 +5,7 @@
  */
 
 export const WEK_INFO = 'mysocial/wallet-wek/v1'
+// The WEK is random. Do not derive it from zkLogin, the prover, or the OAuth subject.
 export const MNEMONIC_RECOVERY_INFO = 'mysocial/wallet-recovery/mnemonic/v1'
 export const IMPORTED_RECOVERY_INFO = 'mysocial/wallet-recovery/imported/v1'
 export const VAULT_VERSION = 1

@@ -7,7 +7,7 @@ import { BackgroundCells } from '@/components/ui/background-ripple-effect';
 import { SparklesCore } from '@/components/ui/sparkles';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Button } from '@/components/ui/button';
-import { exportSigningKey, generateNewWallet, signMessage } from '@/lib/wallet';
+import { exportSigningKey, signMessage } from '@/lib/wallet';
 import {
   fetchExistingVaultAddress,
   MNEMONIC_RECOVERY_INFO,
@@ -224,11 +224,7 @@ function CallbackContent() {
           return;
         }
 
-        const wallet = await generateNewWallet();
-        if (cancelled) return;
-        setPendingSuccess(success);
-        setNewWallet(wallet);
-        setStatus('save-phrase');
+        finishLogin(success);
       } catch {
         if (!cancelled) {
           setErrorMessage('Unable to complete sign in. Please try again.');
