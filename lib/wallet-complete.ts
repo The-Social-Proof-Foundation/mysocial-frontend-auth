@@ -120,7 +120,6 @@ export function completeWalletAuthFlow(
       const message: Record<string, unknown> = {
         type: 'MYSOCIAL_AUTH_RESULT',
         code: success.code,
-        ...(success.salt != null && { salt: success.salt }),
         ...(success.id_token != null && { id_token: success.id_token }),
         ...(success.access_token != null && { access_token: success.access_token }),
         ...(success.session_access_token != null && {
@@ -134,18 +133,12 @@ export function completeWalletAuthFlow(
         clientId: success.clientId,
         requestId: success.requestId,
       };
-      if (walletData != null) {
-        if (walletData.mnemonic != null) message.mnemonic = walletData.mnemonic;
-        if (walletData.privateKey != null) message.privateKey = walletData.privateKey;
-        message.wallet_source = walletData.source;
-      }
       window.opener.postMessage(message, success.returnOrigin);
       window.close();
     } catch {
       console.error('[wallet-complete] postMessage failed');
       const redirectUrl = new URL(success.redirectUri);
       redirectUrl.searchParams.set('code', success.code);
-      if (success.salt != null) redirectUrl.searchParams.set('salt', success.salt);
       if (success.user?.address) redirectUrl.searchParams.set('address', success.user.address);
       if (success.user?.sub) redirectUrl.searchParams.set('sub', success.user.sub);
       redirectUrl.searchParams.set('state', success.state);
@@ -164,9 +157,6 @@ export function completeWalletAuthFlow(
   } else {
     const redirectUrl = new URL(success.redirectUri);
     redirectUrl.searchParams.set('code', success.code);
-    if (success.salt != null) {
-      redirectUrl.searchParams.set('salt', success.salt);
-    }
     if (success.user?.address) {
       redirectUrl.searchParams.set('address', success.user.address);
     }
@@ -210,8 +200,6 @@ export function completeWalletFlow(
         type: 'MYSOCIAL_WALLET_RESULT',
         address,
         source,
-        ...(walletData?.mnemonic && { mnemonic: walletData.mnemonic }),
-        ...(walletData?.privateKey && { privateKey: walletData.privateKey }),
       };
       window.opener.postMessage(message, targetOrigin);
       window.close();

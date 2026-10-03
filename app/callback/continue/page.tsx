@@ -146,8 +146,7 @@ function CallbackContent() {
             {
               type: 'MYSOCIAL_AUTH_RESULT',
               code: success.code,
-              ...(success.salt != null && { salt: success.salt }),
-              ...(success.id_token != null && { id_token: success.id_token }),
+        ...(success.id_token != null && { id_token: success.id_token }),
               ...(success.access_token != null && { access_token: success.access_token }),
               ...(success.session_access_token != null && { session_access_token: success.session_access_token }),
               ...(success.refresh_token != null && { refresh_token: success.refresh_token }),
@@ -164,9 +163,6 @@ function CallbackContent() {
         } else {
           const redirectUrl = new URL(success.redirectUri);
           redirectUrl.searchParams.set('code', success.code);
-          if (success.salt != null) {
-            redirectUrl.searchParams.set('salt', success.salt);
-          }
           if (success.user?.address) {
             redirectUrl.searchParams.set('address', success.user.address);
           }

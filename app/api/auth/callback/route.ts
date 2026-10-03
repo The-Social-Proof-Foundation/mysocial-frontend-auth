@@ -8,7 +8,6 @@ import {
 } from '@/lib/state';
 import { exchangeProviderCode } from '@/lib/api';
 import { canonicalProviderCallbackUrl } from '@/lib/providers';
-import { deriveEd25519AddressFromSubAndSalt } from '@/lib/address-derivation';
 
 export const dynamic = 'force-dynamic';
 
@@ -187,18 +186,6 @@ export async function POST(request: NextRequest) {
           // JWT decode failed; keep user as-is
         }
       }
-    } else if (result.salt != null && result.id_token != null) {
-      try {
-        const payload = decodeJwt(result.id_token) as { sub?: string; email?: string };
-        if (payload.sub) {
-          const address = await deriveEd25519AddressFromSubAndSalt(payload.sub, result.salt);
-          user = { address, sub: payload.sub, ...(payload.email && { email: payload.email }) };
-        } else {
-          user = { sub: payload.sub, ...(payload.email && { email: payload.email }) };
-        }
-      } catch {
-        user = undefined;
-      }
     } else if (result.id_token != null) {
       try {
         const payload = decodeJwt(result.id_token) as { sub?: string; email?: string };
@@ -221,27 +208,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (user?.address == null && user?.sub != null && result.salt != null) {
-      try {
-        const address = await deriveEd25519AddressFromSubAndSalt(user.sub, result.salt);
-        user = { ...(user ?? {}), address };
-      } catch {
-        // ignore
-      }
-    }
-
-    if (!user?.sub || !user?.address) {
+    if (!user?.sub) {
       console.error('[auth/callback] incomplete OAuth user after exchange', {
         hasSub: Boolean(user?.sub),
-        hasAddress: Boolean(user?.address),
-        hasSalt: result.salt != null,
         hasIdToken: result.id_token != null,
       });
       return NextResponse.json(
         {
           error: 'incomplete_user',
-          message:
-            'Authentication succeeded but wallet identity is incomplete. Please try signing in again.',
+          message: 'Authentication succeeded but the account identity is incomplete. Please try signing in again.',
         },
         { status: 502 },
       );
@@ -251,7 +226,6 @@ export async function POST(request: NextRequest) {
       success: true,
       mode: authState.mode,
       code: result.code,
-      ...(result.salt != null && { salt: result.salt }),
       ...(result.id_token != null && { id_token: result.id_token }),
       ...(result.access_token != null && { access_token: result.access_token }),
       ...(result.session_access_token != null && { session_access_token: result.session_access_token }),

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { generateNewWallet, signMessage } from '@/lib/wallet';
 import { completeWalletAuthFlow, completeWalletFlow } from '@/lib/wallet-complete';
+import { MNEMONIC_RECOVERY_INFO, publishRootVault } from '@/lib/publish-vault';
 import { getPendingAuthParams } from '@/lib/auth-actions';
 import type { LoginParams } from '@/lib/params';
 
@@ -51,7 +52,7 @@ export default function CreateWalletPage() {
     }
 
     if (!pendingParams) {
-      completeWalletFlow(wallet.address, 'create', { mnemonic: wallet.mnemonic });
+      completeWalletFlow(wallet.address, 'create');
       return;
     }
 
@@ -82,9 +83,24 @@ export default function CreateWalletPage() {
       }
 
       if (data.success && data.mode && data.returnOrigin) {
-        completeWalletAuthFlow(data, { mnemonic: wallet.mnemonic, source: 'create' });
+        if (data.session_access_token) {
+          await publishRootVault({
+            accessToken: data.session_access_token,
+            address: wallet.address,
+            plaintext: {
+              kind: 'mnemonic',
+              mnemonic: wallet.mnemonic,
+              derivationPath: "m/44'/6976'/0'/0'/0'",
+            },
+            recoveryPhrase: wallet.mnemonic,
+            recoveryInfo: MNEMONIC_RECOVERY_INFO,
+            sign: (message) => signMessage(wallet.mnemonic, message),
+          })
+        }
+        completeWalletAuthFlow(data);
+        setWallet(null);
       } else {
-        completeWalletFlow(wallet.address, 'create', { mnemonic: wallet.mnemonic });
+        completeWalletFlow(wallet.address, 'create');
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Authentication failed');

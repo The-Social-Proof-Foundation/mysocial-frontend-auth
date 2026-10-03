@@ -14,6 +14,8 @@ import {
   signMessage,
 } from '@/lib/wallet';
 import { completeWalletAuthFlow, completeWalletFlow } from '@/lib/wallet-complete';
+import { IMPORTED_RECOVERY_INFO, MNEMONIC_RECOVERY_INFO, publishRootVault } from '@/lib/publish-vault';
+import * as bip39 from 'bip39';
 import { getPendingAuthParams } from '@/lib/auth-actions';
 import type { LoginParams } from '@/lib/params';
 
@@ -70,11 +72,7 @@ export default function ImportWalletPage() {
       }
 
       if (!pendingParams) {
-        completeWalletFlow(
-          address,
-          'import',
-          trimmed.includes(' ') ? { mnemonic: trimmed } : { privateKey: trimmed }
-        );
+        completeWalletFlow(address, 'import');
         return;
       }
 
@@ -101,15 +99,36 @@ export default function ImportWalletPage() {
       }
 
       if (data.success && data.mode && data.returnOrigin) {
-        completeWalletAuthFlow(data, trimmed.includes(' ')
-          ? { mnemonic: trimmed, source: 'import' }
-          : { privateKey: trimmed, source: 'import' });
+        if (data.session_access_token) {
+          if (trimmed.includes(' ')) {
+            await publishRootVault({
+              accessToken: data.session_access_token,
+              address,
+              plaintext: {
+                kind: 'mnemonic',
+                mnemonic: trimmed,
+                derivationPath: "m/44'/6976'/0'/0'/0'",
+              },
+              recoveryPhrase: trimmed,
+              recoveryInfo: MNEMONIC_RECOVERY_INFO,
+              sign: (message) => signMessage(trimmed, message),
+            })
+          } else {
+            const recoveryPhrase = bip39.generateMnemonic(128)
+            await publishRootVault({
+              accessToken: data.session_access_token,
+              address,
+              plaintext: { kind: 'private-key', privateKey: trimmed },
+              recoveryPhrase,
+              recoveryInfo: IMPORTED_RECOVERY_INFO,
+              sign: (message) => signMessage(trimmed, message),
+            })
+            window.alert(`Save this recovery phrase. It unlocks the imported key:\n\n${recoveryPhrase}`)
+          }
+        }
+        completeWalletAuthFlow(data);
       } else {
-        completeWalletFlow(
-          address,
-          'import',
-          trimmed.includes(' ') ? { mnemonic: trimmed } : { privateKey: trimmed }
-        );
+        completeWalletFlow(address, 'import');
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Import failed');

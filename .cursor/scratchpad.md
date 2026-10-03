@@ -8,7 +8,7 @@ Build a TypeScript/Next.js frontend for auth.testnet.mysocial.network, the MySoc
 
 - **State persistence**: Login params must survive the redirect to provider and back. Used iron-session with encrypted cookies (AUTH_STATE_SECRET).
 - **Callback handling**: Provider errors vs success require different flows. API returns stored state when code is missing (for error postMessage/redirect).
-- **Apple OAuth**: Uses `response_mode: 'query'` for consistency with other providers (GET callback with query params).
+- **Apple OAuth**: Must use `response_mode: 'form_post'` when requesting `name`/`email`. POST `/callback` bridges to GET `/callback?code&state`.
 
 ## High-Level Task Breakdown
 
@@ -150,3 +150,34 @@ Build a TypeScript/Next.js frontend for auth.testnet.mysocial.network, the MySoc
 
 - Salt token exchange must receive the **OAuth provider** `redirect_uri` (this auth app), not `LoginParams.redirect_uri` (consumer app return URL).
 - `AuthState` includes `provider_redirect_uri` set in `initLogin`; `exchangeProviderCode` uses `provider_redirect_uri` with env fallback.
+
+---
+
+# Fix Sign in with Apple (form_post)
+
+## Background and Motivation
+Apple rejects `response_mode=query` when requesting `name`/`email`. SIWA never reached salt exchange because the client callback only read GET query params.
+
+## Project Status Board
+- [x] `lib/providers.ts` — Apple `response_mode: 'form_post'`
+- [x] `app/callback/route.ts` — GET/POST → 303 `/callback/continue?...`
+- [x] Client UI moved to `app/callback/continue/page.tsx` (Next forbids page+route on same segment)
+- [x] README + scratchpad deploy checklist (Services ID Return URL + salt Apple secrets)
+
+## Executor's Feedback
+Deploy: confirm Apple Services ID Return URL matches `NEXT_PUBLIC_AUTH_CALLBACK_URL`; salt must have `ALLOWED_AUDIENCE_APPLE`, `APPLE_TEAM_ID`, `APPLE_KEY_IDENTIFIER`, `APPLE_PRIVATE_KEY`.
+`NEXT_PUBLIC_APPLE_CLIENT_ID` / `ALLOWED_AUDIENCE_APPLE` = `com.mysocial.platform` (no Team ID prefix).
+
+---
+
+# Fix /callback → localhost (Railway)
+
+## Root cause
+`app/callback/route.ts` built `Location` with `new URL(..., request.url)`. On Railway `request.url`/`Host` is often container `localhost`, so Google+Apple 303'd to `http://localhost…/callback/continue` and ASWebAuth never hit `dripdrop.social/auth/callback` (error 1).
+
+## Project Status Board
+- [x] `publicOriginFromHeaders` in `lib/providers.ts` (x-forwarded-* then AUTH_CALLBACK_URL origin)
+- [x] `app/callback/route.ts` uses public origin for `/callback/continue` redirects
+
+## Executor's Feedback
+Redeploy auth frontend; verify Location host is `auth.testnet…`, not localhost.
