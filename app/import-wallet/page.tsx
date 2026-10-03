@@ -169,10 +169,49 @@ export default function ImportWalletPage() {
         return;
       }
 
-      const record = await readPasskeyVault(passkey.credentialId);
+      let record = await readPasskeyVault(passkey.credentialId);
+      if (!record?.prfWrappedWek || !record.prfSalt) {
+        const vaultRes = await fetch(
+          `/api/wallet-vault/passkey?credentialId=${encodeURIComponent(passkey.credentialId)}`,
+        );
+        if (vaultRes.status === 404) {
+          passkey.prfOutput.fill(0);
+          setError('This passkey backup is not stored.');
+          return;
+        }
+        if (!vaultRes.ok) {
+          passkey.prfOutput.fill(0);
+          setError('Could not load the wallet vault.');
+          return;
+        }
+        const body = (await vaultRes.json()) as {
+          address?: string;
+          version?: number;
+          credentialId?: string;
+          prfSalt?: string;
+          prfWrappedWek?: string;
+          vault?: string;
+        };
+        if (!body.address || !body.prfSalt || !body.prfWrappedWek || !body.vault || !body.version) {
+          passkey.prfOutput.fill(0);
+          setError('This passkey backup is not stored.');
+          return;
+        }
+        record = {
+          version: body.version,
+          address: body.address,
+          credentialId: body.credentialId ?? passkey.credentialId,
+          prfSalt: body.prfSalt,
+          prfWrappedWek: body.prfWrappedWek,
+          recoveryWrappedWek: '',
+          recoveryKdfSalt: '',
+          vault: body.vault,
+        };
+        await savePasskeyVault(record);
+      }
       if (!record?.prfWrappedWek || !record.prfSalt) {
         passkey.prfOutput.fill(0);
-        setError('Sign in with your phrase once on this browser, then the passkey can be used here.');
+        setError('This passkey backup is not stored.');
         return;
       }
 
