@@ -3,7 +3,12 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Wallet, Download } from 'lucide-react';
+import { Wallet, Download, Fingerprint } from 'lucide-react';
+import {
+  BrowserPasskeyProvider,
+  PasskeyKeypair,
+  findCommonPublicKey,
+} from '@socialproof/myso/keypairs/passkey';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import {
@@ -48,6 +53,47 @@ export function LoginWalletModal() {
       }
     });
   }, []);
+
+  const signInWithPasskey = async () => {
+    if (!pendingParams?.return_origin || !isSafeOrigin(pendingParams.return_origin)) {
+      return;
+    }
+    const host = window.location.hostname.toLowerCase();
+    const rpId = host === 'localhost' || host === '127.0.0.1'
+      ? 'localhost'
+      : host === 'mysocial.network' || host.endsWith('.mysocial.network')
+        ? 'mysocial.network'
+        : host;
+    const passkeyProvider = new BrowserPasskeyProvider('MySocial', {
+      rp: { id: rpId, name: 'MySocial' },
+      authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
+      timeout: 60_000,
+    });
+    let keypair: PasskeyKeypair;
+    try {
+      const first = await PasskeyKeypair.signAndRecover(passkeyProvider, crypto.getRandomValues(new Uint8Array(32)));
+      const second = await PasskeyKeypair.signAndRecover(passkeyProvider, crypto.getRandomValues(new Uint8Array(32)));
+      const publicKey = findCommonPublicKey(first, second);
+      keypair = new PasskeyKeypair(publicKey.toRawBytes(), passkeyProvider);
+    } catch {
+      keypair = await PasskeyKeypair.getPasskeyInstance(passkeyProvider);
+    }
+    const raw = keypair.getPublicKey().toRawBytes();
+    let binary = '';
+    for (const byte of raw) binary += String.fromCharCode(byte);
+    window.opener?.postMessage(
+      {
+        type: 'MYSOCIAL_AUTH_RESULT',
+        passkeyPublicKey: btoa(binary),
+        user: { address: keypair.getPublicKey().toMySoAddress() },
+        state: pendingParams.state,
+        nonce: pendingParams.nonce,
+        clientId: pendingParams.client_id,
+      },
+      pendingParams.return_origin,
+    );
+    window.close();
+  };
 
   const handleSocialLogin = (provider: AuthProvider) => {
     const url = pendingParams
@@ -126,6 +172,14 @@ export function LoginWalletModal() {
             </button>
           );
         })}
+        <button
+          type="button"
+          onClick={() => void signInWithPasskey()}
+          className="w-full h-11 flex items-center justify-center gap-4 rounded-md bg-button-hover border border-border text-white font-chakra-petch hover:bg-zinc-800/90 active:bg-button-surface active:border-zinc-800 transition-colors"
+        >
+          <Fingerprint className="h-5 w-5" />
+          <span>Sign in with Passkey</span>
+        </button>
       </div>
 
       <div className="relative flex items-center w-full max-w-[320px] py-4">
