@@ -95,24 +95,13 @@ export interface WalletAuthSuccess {
   returnOrigin: string;
 }
 
-/** Wallet credentials for keypair derivation. Only passed via postMessage to validated returnOrigin; never in URLs. */
-export interface WalletAuthWalletData {
-  mnemonic?: string;
-  privateKey?: string;
-  source: 'create' | 'import';
-}
-
 /**
  * Complete the wallet auth flow with session tokens (same as OAuth callback).
  * postMessage MYSOCIAL_AUTH_RESULT and dismiss popup, or redirect with hash fragment.
- * When walletData is provided (wallet create/import flow), includes mnemonic or privateKey
- * so the consuming app can derive the keypair locally for signing. Only sent via postMessage
- * to returnOrigin (never in redirect URLs to avoid leaking to history/logs).
+ * Session and public address only. The mnemonic and private key stay in the page
+ * that sealed the vault and are never placed on the message or the redirect URL.
  */
-export function completeWalletAuthFlow(
-  success: WalletAuthSuccess,
-  walletData?: WalletAuthWalletData
-): void {
+export function completeWalletAuthFlow(success: WalletAuthSuccess): void {
   if (typeof window === 'undefined') return;
 
   if (success.mode === 'popup' && window.opener) {
@@ -188,7 +177,6 @@ export function completeWalletAuthFlow(
 export function completeWalletFlow(
   address: string,
   source: 'create' | 'import',
-  walletData?: { mnemonic?: string; privateKey?: string }
 ): void {
   if (typeof window === 'undefined') return;
 
