@@ -80,7 +80,7 @@ export function LoginWalletModal() {
     }
     const raw = keypair.getPublicKey().toRawBytes();
     let binary = '';
-    for (const byte of raw) binary += String.fromCharCode(byte);
+    for (let i = 0; i < raw.length; i += 1) binary += String.fromCharCode(raw[i]);
     window.opener?.postMessage(
       {
         type: 'MYSOCIAL_AUTH_RESULT',
