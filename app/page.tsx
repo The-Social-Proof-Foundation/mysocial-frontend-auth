@@ -39,7 +39,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <div className="relative flex min-h-0 flex-1 flex-col items-center justify-start pb-[env(safe-area-inset-bottom)]">
+      <div className="relative flex min-h-0 flex-1 flex-col items-center justify-start">
         <div
           className="absolute top-0 left-0 right-0 h-[60vh] overflow-hidden z-0"
           style={{
@@ -75,6 +75,13 @@ export default function HomePage() {
         <div className="relative z-10 flex w-full flex-1 flex-col items-center justify-start pt-10 pointer-events-none">
           <LoginWalletModal />
         </div>
+
+        <footer className="relative z-10 mt-auto flex shrink-0 items-center justify-center gap-1.5 pointer-events-none pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4">
+          <span className="text-xs font-space-grotesk text-muted-foreground">
+            private zkLogin
+          </span>
+          <FilledLockIcon className="size-3 shrink-0 text-emerald-300" />
+        </footer>
       </div>
     </div>
   );

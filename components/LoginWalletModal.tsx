@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Wallet, Download, Fingerprint } from 'lucide-react';
-import { recoverPasskeyAccount, handoffPasskeyAccount } from '@/lib/passkey-wallet';
+import { Wallet, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import {
@@ -49,12 +48,6 @@ export function LoginWalletModal() {
       }
     });
   }, []);
-
-  const logInWithPasskey = async () => {
-    if (!pendingParams) return;
-    const keypair = await recoverPasskeyAccount();
-    handoffPasskeyAccount(keypair, pendingParams);
-  };
 
   const handleSocialLogin = (provider: AuthProvider) => {
     const url = pendingParams
@@ -133,14 +126,6 @@ export function LoginWalletModal() {
             </button>
           );
         })}
-        <button
-          type="button"
-          onClick={() => void logInWithPasskey()}
-          className="w-full h-11 flex items-center justify-center gap-4 rounded-md bg-button-hover border border-border text-white font-chakra-petch hover:bg-zinc-800/90 active:bg-button-surface active:border-zinc-800 transition-colors"
-        >
-          <Fingerprint className="h-5 w-5" />
-          <span>Log in with passkey</span>
-        </button>
       </div>
 
       <div className="relative flex items-center w-full max-w-[320px] py-4">

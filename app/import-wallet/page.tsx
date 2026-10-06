@@ -16,6 +16,7 @@ import {
 } from '@/lib/wallet';
 import { completeWalletAuthFlow, completeWalletFlow } from '@/lib/wallet-complete';
 import { discoverPasskeyPrf } from '@/lib/passkey';
+import { recoverPasskeyAccount, handoffPasskeyAccount } from '@/lib/passkey-wallet';
 import { readPasskeyVault, savePasskeyVault } from '@/lib/passkey-vault-store';
 import { WEK_INFO, openVault, unwrapWek } from '@/lib/vault-crypto';
 import { IMPORTED_RECOVERY_INFO, MNEMONIC_RECOVERY_INFO, fetchExistingVault, publishRootVault } from '@/lib/publish-vault';
@@ -33,6 +34,7 @@ export default function ImportWalletPage() {
   const [pendingParams, setPendingParams] = useState<LoginParams | null | undefined>(undefined);
   const [isImporting, setIsImporting] = useState(false);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const [nativePasskeyBusy, setNativePasskeyBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -148,6 +150,27 @@ export default function ImportWalletPage() {
       setError(e instanceof Error ? e.message : 'Import failed');
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  const handleNativePasskeySignIn = async () => {
+    setIsImporting(true);
+    setNativePasskeyBusy(true);
+    setError(null);
+    try {
+      const freshParams = await getPendingAuthParams();
+      setPendingParams(freshParams);
+      if (!freshParams) {
+        setError('Please sign in from the app first.');
+        return;
+      }
+      const keypair = await recoverPasskeyAccount();
+      handoffPasskeyAccount(keypair, freshParams);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Passkey sign-in failed');
+    } finally {
+      setIsImporting(false);
+      setNativePasskeyBusy(false);
     }
   };
 
@@ -342,7 +365,7 @@ export default function ImportWalletPage() {
               onClick={handleImport}
               disabled={isImporting || !input.trim() || pendingParams === null}
             >
-              {isImporting && !passkeyBusy ? (
+              {isImporting && !passkeyBusy && !nativePasskeyBusy ? (
                 <LoadingSpinner />
               ) : (
                 <>
@@ -356,6 +379,21 @@ export default function ImportWalletPage() {
         <Button
           variant="ghost"
           className="mt-3 w-full font-chakra-petch py-3 text-muted-foreground hover:bg-transparent hover:text-foreground"
+          onClick={() => void handleNativePasskeySignIn()}
+          disabled={isImporting || pendingParams === null}
+        >
+          {nativePasskeyBusy ? (
+            <LoadingSpinner />
+          ) : (
+            <>
+              <Fingerprint className="mr-2 h-4 w-4" />
+              Sign in with passkey
+            </>
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          className="w-full font-chakra-petch py-3 text-muted-foreground hover:bg-transparent hover:text-foreground"
           onClick={handlePasskeySignIn}
           disabled={isImporting || pendingParams === null}
         >
@@ -364,7 +402,7 @@ export default function ImportWalletPage() {
           ) : (
             <>
               <Fingerprint className="mr-2 h-4 w-4" />
-              Sign in with passkey
+              Restore with passkey
             </>
           )}
         </Button>
