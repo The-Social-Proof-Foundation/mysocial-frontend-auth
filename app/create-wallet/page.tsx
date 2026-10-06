@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Copy, Eye, EyeOff, Download, Fingerprint, Wallet } from 'lucide-react';
+import { ArrowLeft, Copy, Eye, EyeOff, Download, Wallet } from 'lucide-react';
 import { BackgroundCells } from '@/components/ui/background-ripple-effect';
 import { SparklesCore } from '@/components/ui/sparkles';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { MNEMONIC_RECOVERY_INFO, publishRootVault } from '@/lib/publish-vault';
 import { enrollPasskeyForVault } from '@/lib/passkey';
 import { savePasskeyVault } from '@/lib/passkey-vault-store';
 import { getPendingAuthParams } from '@/lib/auth-actions';
-import { createPasskeyAccount, handoffPasskeyAccount } from '@/lib/passkey-wallet';
+// import { createPasskeyAccount, handoffPasskeyAccount } from '@/lib/passkey-wallet';
 import type { LoginParams } from '@/lib/params';
 
 function buildChallengeMessage(state: string): string {
@@ -34,23 +34,24 @@ export default function CreateWalletPage() {
     getPendingAuthParams().then(setPendingParams);
   }, []);
 
-  const handlePasskey = async () => {
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      const freshParams = await getPendingAuthParams();
-      if (!freshParams) {
-        setError('Please sign in from the app first.');
-        return;
-      }
-      const keypair = await createPasskeyAccount();
-      handoffPasskeyAccount(keypair, freshParams);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Passkey was not created.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // Native seedless passkey wallet — disabled; PRF vault backup only.
+  // const handlePasskey = async () => {
+  //   setError(null);
+  //   setIsSubmitting(true);
+  //   try {
+  //     const freshParams = await getPendingAuthParams();
+  //     if (!freshParams) {
+  //       setError('Please sign in from the app first.');
+  //       return;
+  //     }
+  //     const keypair = await createPasskeyAccount();
+  //     handoffPasskeyAccount(keypair, freshParams);
+  //   } catch (e) {
+  //     setError(e instanceof Error ? e.message : 'Passkey was not created.');
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
 
   const handleGenerate = async () => {
     setStep('generating');
@@ -392,6 +393,7 @@ export default function CreateWalletPage() {
           </div>
         )}
         </div>
+        {/* Native seedless passkey wallet — disabled; PRF vault backup only.
         {step === 'warning' && (
           <Button
             variant="ghost"
@@ -409,6 +411,7 @@ export default function CreateWalletPage() {
             )}
           </Button>
         )}
+        */}
         </div>
       </div>
     </div>

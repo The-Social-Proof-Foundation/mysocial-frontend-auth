@@ -62,7 +62,7 @@ export function LoginWalletModal() {
   if (!pendingParamsLoaded) {
     return (
       <div className="flex flex-col items-center gap-0 pointer-events-auto">
-        <Image src="/logo.svg" alt="MySocial" width={52} height={52} priority />
+        <Image src="/logo.svg" alt="MySocial" width={58} height={58} priority />
         <LoadingSpinner className="mt-[25vh]" tone="foreground" />
       </div>
     );
@@ -71,7 +71,7 @@ export function LoginWalletModal() {
   if (!pickerEnabled) {
     return (
       <div className="flex flex-col items-center gap-0 pointer-events-auto">
-        <Image src="/logo.svg" alt="MySocial" width={52} height={52} priority />
+        <Image src="/logo.svg" alt="MySocial" width={58} height={58} priority />
         <h1 className="text-muted-foreground text-base pt-4">Sign into the</h1>
         <p className="font-chakra-petch text-3xl font-medium text-foreground text-center max-w-md">
           MySocial Testnet
@@ -85,7 +85,7 @@ export function LoginWalletModal() {
 
   return (
     <div className="flex flex-col items-center gap-0 pointer-events-auto">
-      <Image src="/logo.svg" alt="MySocial" width={52} height={52} priority />
+      <Image src="/logo.svg" alt="MySocial" width={58} height={58} priority />
       <div className="flex flex-col items-center gap-1">
         <h1 className="text-muted-foreground text-base pt-4">Sign into the</h1>
         <p className="font-chakra-petch text-3xl font-medium text-foreground text-center max-w-md">
