@@ -76,11 +76,16 @@ export default function HomePage() {
           <LoginWalletModal />
         </div>
 
-        <footer className="relative z-10 mt-auto flex shrink-0 items-center justify-center gap-1.5 pointer-events-none pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4">
-          <span className="text-xs font-space-grotesk text-muted-foreground">
+        <footer className="relative z-10 mt-auto flex shrink-0 items-center justify-center pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4">
+          <a
+            href="https://docs.mysocial.network/mysocial/blockchain/social/zklogin"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-space-grotesk text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <FilledLockIcon className="size-3 shrink-0" />
             private zkLogin
-          </span>
-          <FilledLockIcon className="size-3 shrink-0 text-emerald-300" />
+          </a>
         </footer>
       </div>
     </div>
