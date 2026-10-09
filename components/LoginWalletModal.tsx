@@ -117,9 +117,9 @@ export function LoginWalletModal() {
                 <Image
                   src={PROVIDER_LOGOS[provider]}
                   alt=""
-                  width={20}
-                  height={20}
-                  className="flex-shrink-0"
+                  width={provider === 'apple' ? 26 : 20}
+                  height={provider === 'apple' ? 26 : 20}
+                  className={provider === 'apple' ? 'flex-shrink-0 -mx-[3px]' : 'flex-shrink-0'}
                 />
               )}
               <span>{label}</span>
