@@ -23,8 +23,9 @@ export function authIssuer(): string {
 }
 
 export function saltJwksUrl(): string {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://salt.testnet.mysocial.network'
-  return process.env.SESSION_JWKS_URL ?? `${base.replace(/\/$/, '')}/.well-known/jwks.json`
+  if (process.env.SESSION_JWKS_URL) return process.env.SESSION_JWKS_URL.replace(/\/$/, '')
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '')
+  return base ? `${base}/.well-known/jwks.json` : DEFAULT_SALT_JWKS
 }
 
 export function allowedSessionIssuers(): string[] {
