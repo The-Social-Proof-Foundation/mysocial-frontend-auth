@@ -29,8 +29,10 @@ export function saltJwksUrl(): string {
 }
 
 export function allowedSessionIssuers(): string[] {
-  const configured = process.env.SESSION_JWT_ISSUER?.trim()
-  return [...new Set([authIssuer(), 'https://salt.testnet.mysocial.network', ...(configured ? [configured.replace(/\/$/, '')] : [])])]
+  const configured = process.env.SESSION_JWT_ISSUER?.trim().replace(/\/$/, '')
+  const issuers = [authIssuer(), 'https://salt.testnet.mysocial.network']
+  if (configured) issuers.push(configured)
+  return issuers.filter((issuer, index) => issuers.indexOf(issuer) === index)
 }
 
 export function introspectionAuthorized(header: string | null): boolean {
