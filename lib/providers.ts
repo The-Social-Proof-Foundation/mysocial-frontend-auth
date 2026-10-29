@@ -220,8 +220,8 @@ export function buildProviderAuthUrl(
 }
 
 const ALL_PROVIDERS: AuthProvider[] = [
-  'google',
   'apple',
+  'google',
   // 'facebook',
   // 'twitch',
 ];

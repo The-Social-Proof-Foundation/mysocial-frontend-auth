@@ -84,7 +84,7 @@ export default function HomePage() {
             className="inline-flex items-center gap-1.5 text-xs font-space-grotesk text-muted-foreground transition-colors hover:text-foreground"
           >
             <FilledLockIcon className="size-3 shrink-0" />
-            private zkLogin
+            secured by zkLogin
           </a>
         </footer>
       </div>
