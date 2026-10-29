@@ -164,6 +164,11 @@ export async function openVault(
   if (parsed.kind === 'private-key' && parsed.privateKey) {
     return { kind: 'private-key', privateKey: parsed.privateKey }
   }
+  // DripDrop iOS seals Google / Apple (zkLogin) accounts' salt here; that sign-in is the proof.
+  const kind = (parsed as { kind?: string }).kind
+  if (kind === 'zklogin-salt' || kind === 'contra-seed') {
+    throw new Error('This passkey backs up a social sign-in. Continue with Google or Apple instead.')
+  }
   throw new Error('Unknown vault contents')
 }
 
